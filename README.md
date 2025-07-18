@@ -15,3 +15,4 @@ npx create-next-app@latest . \
   --app \
   --example "https://github.com/onevision-git/nextjs-base-environment"
 npm run dev
+```
