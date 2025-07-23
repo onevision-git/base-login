@@ -16,4 +16,5 @@ npx create-next-app@latest . \
   --example "https://github.com/onevision-git/nextjs-base-login"
 npm run dev
 ```
+
 After cloning, copy .env.example to .env.local and fill in your own values.
