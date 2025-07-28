@@ -13,11 +13,11 @@ export interface IUser extends Document {
 const UserSchema = new Schema<IUser>(
   {
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true },
-    email:     { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
-    roles:       { type: [String], default: ['user'] },
+    roles: { type: [String], default: ['user'] },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const User = model<IUser>('User', UserSchema);

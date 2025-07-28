@@ -10,10 +10,10 @@ export interface ITenant extends Document {
 
 const TenantSchema = new Schema<ITenant>(
   {
-    name:   { type: String, required: true, unique: true },
+    name: { type: String, required: true, unique: true },
     domain: { type: String, required: true, unique: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Tenant = model<ITenant>('Tenant', TenantSchema);

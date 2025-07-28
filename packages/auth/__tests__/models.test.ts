@@ -1,4 +1,8 @@
 // packages/auth/__tests__/models.test.ts
+
+// Increase default timeout for MongoMemoryServer startup
+jest.setTimeout(30000);
+
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
@@ -40,13 +44,11 @@ describe('Mongoose Models Integration', () => {
   });
 
   it('should create a User linked to a Tenant', async () => {
-    // First create a tenant
     const tenant = await Tenant.create({
       name: 'TestCorp',
       domain: 'testcorp.com',
     });
 
-    // Then create a user under that tenant
     const userData: Partial<IUser> = {
       tenantId: tenant._id.toString(),
       email: 'user@test.com',
