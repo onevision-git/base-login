@@ -8,15 +8,15 @@ module.exports = {
   transform: {
     // Transform TS/JS and also ESM .mjs via ts-jest
     '^.+\\.[tj]sx?$': 'ts-jest',
-    '^.+\\.mjs$': 'ts-jest'
+    '^.+\\.mjs$': 'ts-jest',
   },
   // Do _not_ ignore these ESM modules
   transformIgnorePatterns: [
-    'node_modules/(?!(bson|mongodb|mongodb-memory-server)/)'
+    'node_modules/(?!(bson|mongodb|mongodb-memory-server)/)',
   ],
   globals: {
     'ts-jest': {
-      tsconfig: 'tsconfig.json'
-    }
-  }
+      tsconfig: 'tsconfig.json',
+    },
+  },
 };
