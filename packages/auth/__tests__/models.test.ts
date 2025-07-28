@@ -60,7 +60,7 @@ describe('Mongoose Models Integration', () => {
     const foundUser = await User.findOne({ email: 'user@test.com' });
     expect(foundUser).not.toBeNull();
     expect((foundUser as IUser).tenantId.toString()).toBe(
-      tenant._id.toString()
+      tenant._id.toString(),
     );
   });
 });
