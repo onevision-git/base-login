@@ -3,16 +3,18 @@
 import { Resend } from 'resend';
 import { sendMagicLinkEmail } from '../src/email';
 
-jest.mock('resend');
+// Create a single mock for the send function
+const mockSend = jest.fn();
+
+// When 'resend' is imported, return our mocked Resend class
+jest.mock('resend', () => ({
+  Resend: jest.fn().mockImplementation(() => ({
+    emails: { send: mockSend },
+  })),
+}));
 
 describe('sendMagicLinkEmail', () => {
-  const mockSend = jest.fn();
-
   beforeAll(() => {
-    // @ts-ignore
-    Resend.mockImplementation(() => ({
-      emails: { send: mockSend },
-    }));
     process.env.EMAIL_FROM = 'no-reply@test.com';
     process.env.NEXTAUTH_URL = 'https://app.test';
     process.env.RESEND_API_KEY = 'test-key';
