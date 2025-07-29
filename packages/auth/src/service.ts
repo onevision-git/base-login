@@ -4,6 +4,17 @@ import Tenant from './models/Tenant';
 import User, { IUser } from './models/User';
 import { hashPassword, comparePassword } from './password';
 import { signAccessToken, verifyAccessToken } from './jwt';
+import { sendMagicLinkEmail } from './email';
+
+export async function sendLoginLink(email: string): Promise<void> {
+  const user = await User.findOne({ email });
+  if (!user) throw new Error('No user found');
+  const token = signAccessToken(
+    { userId: user._id.toString(), tenantId: user.tenantId.toString() },
+    '15m',
+  );
+  await sendMagicLinkEmail(email, token);
+}
 
 export interface SignUpInput {
   tenantName: string;
