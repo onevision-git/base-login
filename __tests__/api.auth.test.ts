@@ -5,8 +5,8 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
 import { POST as signupRoute } from '../src/app/api/auth/signup/route';
-import { POST as loginRoute } from '../src/app/api/auth/login/route';
-import { GET as meRoute } from '../src/app/api/auth/me/route';
+import { POST as loginRoute }  from '../src/app/api/auth/login/route';
+import { GET  as meRoute }     from '../src/app/api/auth/me/route';
 import { POST as logoutRoute } from '../src/app/api/auth/logout/route';
 
 describe('Auth API routes', () => {
@@ -21,13 +21,6 @@ describe('Auth API routes', () => {
   afterAll(async () => {
     await mongoose.disconnect();
     await mongoServer.stop();
-  });
-
-  afterEach(async () => {
-    // Clear DB between tests
-    for (const key in mongoose.connection.collections) {
-      await mongoose.connection.collections[key].deleteMany({});
-    }
   });
 
   it('POST /api/auth/signup → 201 + token', async () => {
@@ -49,6 +42,7 @@ describe('Auth API routes', () => {
   });
 
   it('POST /api/auth/login → 200 + token', async () => {
+    // No cleanup, so user from signup remains
     const req = new Request('http://localhost/api/auth/login', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
