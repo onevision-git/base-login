@@ -14,6 +14,10 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(bson|mongodb|mongodb-memory-server)/)',
   ],
+  // Map Next.js `@/` imports to the project root
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1'
+    },
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.json',
