@@ -33,7 +33,7 @@ export async function signUp(data: SignUpInput): Promise<AuthResult> {
   });
   const token = signAccessToken(
     { userId: user._id.toString(), tenantId: tenant._id.toString() },
-    '1h'
+    '1h',
   );
   return { token, user };
 }
@@ -53,7 +53,7 @@ export async function login(data: LoginInput): Promise<AuthResult> {
   if (!valid) throw new Error('Invalid credentials');
   const token = signAccessToken(
     { userId: user._id.toString(), tenantId: user.tenantId.toString() },
-    '1h'
+    '1h',
   );
   return { token, user };
 }
@@ -62,7 +62,7 @@ export async function login(data: LoginInput): Promise<AuthResult> {
  * Given a JWT, return the current user.
  */
 export async function getMe(token: string): Promise<IUser> {
-  const payload = await verifyAccessToken(token) as { userId: string };
+  const payload = (await verifyAccessToken(token)) as { userId: string };
   const user = await User.findById(payload.userId);
   if (!user) throw new Error('Not authenticated');
   return user;

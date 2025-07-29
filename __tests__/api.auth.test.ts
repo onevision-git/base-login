@@ -5,8 +5,8 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
 import { POST as signupRoute } from '../src/app/api/auth/signup/route';
-import { POST as loginRoute }  from '../src/app/api/auth/login/route';
-import { GET  as meRoute }     from '../src/app/api/auth/me/route';
+import { POST as loginRoute } from '../src/app/api/auth/login/route';
+import { GET as meRoute } from '../src/app/api/auth/me/route';
 import { POST as logoutRoute } from '../src/app/api/auth/logout/route';
 
 describe('Auth API routes', () => {

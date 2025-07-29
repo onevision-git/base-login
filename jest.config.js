@@ -16,8 +16,8 @@ module.exports = {
   ],
   // Map Next.js `@/` imports to the project root
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1'
-    },
+    '^@/(.*)$': '<rootDir>/$1',
+  },
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.json',

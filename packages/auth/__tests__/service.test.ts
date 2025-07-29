@@ -4,13 +4,7 @@ jest.setTimeout(30000);
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
-import {
-  signUp,
-  login,
-  getMe,
-  logout,
-  SignUpInput,
-} from '../src/service';
+import { signUp, login, getMe, logout, SignUpInput } from '../src/service';
 
 let mongoServer: MongoMemoryServer;
 
@@ -60,7 +54,7 @@ describe('Auth Service functions', () => {
   it('login should reject wrong password', async () => {
     await signUp(userInput);
     await expect(
-      login({ email: userInput.email, password: 'wrongPw' })
+      login({ email: userInput.email, password: 'wrongPw' }),
     ).rejects.toThrow('Invalid credentials');
   });
 

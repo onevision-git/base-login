@@ -4,14 +4,20 @@
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
     "clean": "rimraf dist",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch"
   },
-  "keywords": ["auth", "base-login", "onevision"],
+  "keywords": [
+    "auth",
+    "base-login",
+    "onevision"
+  ],
   "author": "OneVision",
   "license": "MIT",
   "description": "Authentication package for Base-Login boilerplate",
