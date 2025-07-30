@@ -36,11 +36,9 @@ jobs:
         run: npm ci
 
       - name: Format & Lint
-        run: |
-          npm run format
-          npm run lint
+        run: npm run format && npm run lint
 
-       - name: Build
+      - name: Build (auth + app)
         run: npm run build
 
       - name: Run tests
