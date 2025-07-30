@@ -2,29 +2,48 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - dev/auth-addition
   pull_request:
-    branches: [ main ]
 
 jobs:
-  build-and-lint:
+  build-and-test:
     runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:6
+        ports:
+          - 27017:27017
+
+    # Inject all required secrets for JWT, Resend and email
+    env:
+      ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+      NEXTAUTH_URL:         ${{ secrets.NEXTAUTH_URL }}
+      RESEND_API_KEY:       ${{ secrets.RESEND_API_KEY }}
+      EMAIL_FROM:           ${{ secrets.EMAIL_FROM }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: 18
-          cache: 'npm'
+          node-version: '18'
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Format & Lint
+        run: |
+          npm run format
+          npm run lint
+
       - name: Build
         run: npm run build
 
-      - name: Lint
-        run: npm run lint
+      - name: Run tests
+        # --runInBand prevents parallel DB connections
+        run: npm test -- --runInBand
