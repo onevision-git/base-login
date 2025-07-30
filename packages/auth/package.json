@@ -1,38 +1,15 @@
 {
   "name": "@onevision/base-login-auth",
   "version": "1.0.0",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "tsc -b",
-    "clean": "rimraf dist",
-    "test": "jest --passWithNoTests",
-    "test:watch": "jest --watch"
-  },
-  "keywords": [
-    "auth",
-    "base-login",
-    "onevision"
-  ],
-  "author": "OneVision",
-  "license": "MIT",
-  "description": "Authentication package for Base-Login boilerplate",
-  "dependencies": {
-    "bcryptjs": "^3.0.2",
-    "jsonwebtoken": "^9.0.2"
+    "build": "tsc -b"
   },
   "peerDependencies": {
     "mongoose": "^8.16.5"
   },
-  "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/mongoose": "^5.11.96",
-    "rimraf": "^6.0.1",
-    "typescript": "^5.8.3"
-  }
+  "files": [
+    "dist"
+  ]
 }

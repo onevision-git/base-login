@@ -1,0 +1,1 @@
+{"version":3,"file":"Tenant.d.ts","sourceRoot":"","sources":["../../src/models/Tenant.ts"],"names":[],"mappings":"AAEA,OAAO,EAAiB,QAAQ,EAAE,MAAM,UAAU,CAAC;AAEnD,MAAM,WAAW,SAAU,SAAQ,QAAQ;IACzC,IAAI,EAAE,MAAM,CAAC;IACb,MAAM,EAAE,MAAM,CAAC;IACf,SAAS,EAAE,IAAI,CAAC;IAChB,SAAS,EAAE,IAAI,CAAC;CACjB;;;;;;AAUD,wBAAwD"}

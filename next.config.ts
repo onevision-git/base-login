@@ -1,8 +1,6 @@
-// next.config.js
-
-/** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
   transpilePackages: ['@onevision/base-login-auth'],
 };
 
-module.exports = nextConfig;
+export default nextConfig;

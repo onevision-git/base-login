@@ -2,44 +2,32 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - dev/auth-addition
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
-
-    services:
-      mongodb:
-        image: mongo:6
-        ports:
-          - 27017:27017
-
-    env:
-      ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
-      NEXTAUTH_URL:         ${{ secrets.NEXTAUTH_URL }}
-      RESEND_API_KEY:       ${{ secrets.RESEND_API_KEY }}
-      EMAIL_FROM:           ${{ secrets.EMAIL_FROM }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: 'yarn'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies using Yarn workspaces
+        run: yarn install --frozen-lockfile
 
-      - name: Format & Lint
-        run: npm run format && npm run lint
+      - name: Build all workspaces
+        run: yarn build
 
-      - name: Build (auth + app)
-        run: npm run build
+      - name: Lint code
+        run: yarn lint
 
       - name: Run tests
-        run: npm test -- --runInBand
+        run: yarn test
