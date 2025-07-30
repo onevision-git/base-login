@@ -1,9 +1,10 @@
 // packages/auth/src/index.ts
 
-/**
- * A placeholder function in the auth package.
- * You’ll replace or extend this with real JWT/password helpers.
- */
+export * from './service';
+export * from './email';
+export * from './jwt';
+export * from './password';
+
 export function helloAuth(): string {
   return 'hello-auth';
 }
