@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMe } from '@/packages/auth/src/service';
+import { getMe } from '@onevision/base-login-auth';
 
 export async function GET(req: NextRequest) {
   try {

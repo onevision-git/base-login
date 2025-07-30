@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { signUp } from '@/packages/auth/src/service';
+import { signUp } from '@onevision/base-login-auth';
 
 export async function POST(req: NextRequest) {
   try {
