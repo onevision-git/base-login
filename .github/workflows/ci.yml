@@ -10,6 +10,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+      NEXTAUTH_URL:       ${{ secrets.NEXTAUTH_URL }}
+      RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
+      EMAIL_FROM:         ${{ secrets.EMAIL_FROM }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
