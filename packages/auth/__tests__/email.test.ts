@@ -1,17 +1,14 @@
 // packages/auth/__tests__/email.test.ts
 
-import { Resend } from 'resend';
-import { sendMagicLinkEmail } from '../src/email';
-
-// Create a single mock for the send function
+// Mock the Resend SDK before importing the module under test
 const mockSend = jest.fn();
-
-// When 'resend' is imported, return our mocked Resend class
 jest.mock('resend', () => ({
   Resend: jest.fn().mockImplementation(() => ({
     emails: { send: mockSend },
   })),
 }));
+
+import { sendMagicLinkEmail } from '../src/email';
 
 describe('sendMagicLinkEmail', () => {
   beforeAll(() => {

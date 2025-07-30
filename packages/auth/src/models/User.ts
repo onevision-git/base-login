@@ -1,8 +1,9 @@
 // packages/auth/src/models/User.ts
-import { Schema, model, Document } from 'mongoose';
 
-export interface IUser extends Document {
-  tenantId: string;
+import { Schema, model, Document, Types } from 'mongoose';
+
+export interface UserDoc extends Document {
+  tenantId: Types.ObjectId;
   email: string;
   passwordHash: string;
   roles: string[];
@@ -10,7 +11,7 @@ export interface IUser extends Document {
   updatedAt: Date;
 }
 
-const UserSchema = new Schema<IUser>(
+const UserSchema = new Schema<UserDoc>(
   {
     tenantId: { type: Schema.Types.ObjectId, ref: 'Tenant', required: true },
     email: { type: String, required: true, unique: true },
@@ -20,5 +21,4 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true },
 );
 
-const User = model<IUser>('User', UserSchema);
-export default User;
+export default model<UserDoc>('User', UserSchema);

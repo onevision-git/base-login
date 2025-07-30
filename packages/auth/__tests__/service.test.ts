@@ -1,5 +1,5 @@
 // Increase Jest timeout for MongoMemoryServer startup
-jest.setTimeout(30000);
+jest.setTimeout(60000);
 
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';

@@ -1,7 +1,8 @@
-import type { NextConfig } from 'next';
+// next.config.js
 
-const nextConfig: NextConfig = {
-  /* config options here */
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  transpilePackages: ['@onevision/base-login-auth'],
 };
 
-export default nextConfig;
+module.exports = nextConfig;
