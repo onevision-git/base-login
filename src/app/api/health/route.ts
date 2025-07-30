@@ -1,10 +1,6 @@
 // src/app/api/health/route.ts
+import { NextResponse } from 'next/server';
 
 export async function GET() {
-  // Stubbed health-check so CI/build won’t need a real MongoDB URI
-
-  return new Response(JSON.stringify({ status: 'ok' }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return NextResponse.json({ status: 'ok' });
 }

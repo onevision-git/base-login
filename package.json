@@ -1,12 +1,14 @@
 {
   "private": true,
-  "workspaces": ["packages/auth"],
+  "workspaces": [
+    "packages/auth"
+  ],
   "name": "hello-crm",
   "version": "0.1.0",
-  "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build:auth": "npm --prefix packages/auth run build",
+    "build": "npm run build:auth && next build",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write \"**/*.{js,ts,tsx,json,css,md}\"",
