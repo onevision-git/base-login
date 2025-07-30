@@ -17,7 +17,6 @@ jobs:
         ports:
           - 27017:27017
 
-    # Inject all required secrets for JWT, Resend and email
     env:
       ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
       NEXTAUTH_URL:         ${{ secrets.NEXTAUTH_URL }}
@@ -25,10 +24,11 @@ jobs:
       EMAIL_FROM:           ${{ secrets.EMAIL_FROM }}
 
     steps:
-      - name: Use Node.js
-        uses: actions/setup-node@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Use Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '20'
 
@@ -40,9 +40,11 @@ jobs:
           npm run format
           npm run lint
 
-      - name: Build
-        run: npm run build
+      - name: Build Auth Package
+        run: npm --prefix packages/auth run build
+
+      - name: Build Next.js App
+        run: next build
 
       - name: Run tests
-        # --runInBand prevents parallel DB connections
         run: npm test -- --runInBand
