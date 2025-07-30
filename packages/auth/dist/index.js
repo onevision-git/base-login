@@ -5,5 +5,5 @@ export * from './password';
 export * from './models/User';
 export * from './models/Tenant';
 export function helloAuth() {
-    return 'hello-auth';
+  return 'hello-auth';
 }

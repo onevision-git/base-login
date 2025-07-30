@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
  * @returns           A Promise resolving to the hashed password
  */
 export function hashPassword(password, saltRounds = 10) {
-    return bcrypt.hash(password, saltRounds);
+  return bcrypt.hash(password, saltRounds);
 }
 /**
  * Compare a plaintext password against a hash.
@@ -16,5 +16,5 @@ export function hashPassword(password, saltRounds = 10) {
  * @returns         A Promise resolving to true if they match, else false
  */
 export function comparePassword(password, hash) {
-    return bcrypt.compare(password, hash);
+  return bcrypt.compare(password, hash);
 }

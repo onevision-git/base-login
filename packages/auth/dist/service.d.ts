@@ -1,16 +1,16 @@
 export interface SignUpInput {
-    tenantName: string;
-    tenantDomain: string;
-    email: string;
-    password: string;
+  tenantName: string;
+  tenantDomain: string;
+  email: string;
+  password: string;
 }
 export interface LoginInput {
-    email: string;
-    password: string;
+  email: string;
+  password: string;
 }
 export interface AuthResult {
-    token: string;
-    user: Record<string, any>;
+  token: string;
+  user: Record<string, any>;
 }
 export declare function signUp(data: SignUpInput): Promise<AuthResult>;
 export declare function login(data: LoginInput): Promise<AuthResult>;
