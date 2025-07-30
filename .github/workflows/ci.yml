@@ -18,16 +18,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
+          cache: 'npm'
 
-      - name: Install dependencies using Yarn workspaces
-        run: yarn install --frozen-lockfile
+      - name: Install dependencies using npm
+        run: npm ci
 
       - name: Build all workspaces
-        run: yarn build
+        run: npm run build
 
       - name: Lint code
-        run: yarn lint
+        run: npm run lint
 
       - name: Run tests
-        run: yarn test
+        run: npm run test
