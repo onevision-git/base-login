@@ -1,10 +1,7 @@
-/* src/app/global.css */
-
+﻿/* src/app/global.css */
 @tailwind base;
 @tailwind components;
-@tailwind utilities;
-
-/* Custom global styles */
+@tailwind utilities; /* Custom global styles */
 html,
 body {
   @apply bg-white text-gray-900;

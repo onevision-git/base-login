@@ -1,31 +1,40 @@
 ﻿'use client';
 import { useState } from 'react';
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState('');
+  const [orgName, setOrgName] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/auth/send-link', {
+    const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, orgName }),
     });
     const data = await res.json();
     if (res.ok) {
-      setMessage('Magic link sent to your email');
+      setMessage('Signed up successfully â€” check your email!');
     } else {
-      setMessage(data.error || 'Login failed');
+      setMessage(data.error || 'Signup failed');
     }
   };
   return (
     <main className="min-h-screen flex items-center justify-center p-4">
       {' '}
-      <form onSubmit={handleLogin} className="w-full max-w-md space-y-6">
+      <form onSubmit={handleSignup} className="w-full max-w-md space-y-6">
         {' '}
-        <h1 className="text-2xl font-semibold text-center">Login</h1>{' '}
+        <h1 className="text-2xl font-semibold text-center">Sign Up</h1>{' '}
         {message && (
           <div className="bg-blue-100 text-blue-700 p-2 rounded">{message}</div>
         )}{' '}
+        <input
+          type="text"
+          required
+          placeholder="Organisation Name"
+          className="w-full p-2 border rounded"
+          value={orgName}
+          onChange={(e) => setOrgName(e.target.value)}
+        />{' '}
         <input
           type="email"
           required
@@ -39,7 +48,7 @@ export default function LoginPage() {
           className="w-full bg-black text-white p-2 rounded hover:bg-gray-800 transition"
         >
           {' '}
-          Send Magic Link{' '}
+          Sign Up{' '}
         </button>{' '}
       </form>{' '}
     </main>
