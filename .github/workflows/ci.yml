@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - '**'   # ✅ triggers CI on all branches
+      - '**' # ✅ triggers CI on all branches
   pull_request:
     branches:
       - main
@@ -11,6 +11,13 @@ on:
 jobs:
   build-and-lint:
     runs-on: ubuntu-latest
+
+    env:
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+      NEXTAUTH_URL: http://localhost:3000
 
     steps:
       - name: Checkout code
