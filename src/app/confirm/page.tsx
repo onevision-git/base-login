@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function ConfirmPage() {
+function ConfirmContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const router = useRouter();
@@ -32,8 +32,7 @@ export default function ConfirmPage() {
         } else {
           setStatus('error');
         }
-      } catch (err) {
-        console.error('Confirm error:', err);
+      } catch {
         setStatus('error');
       }
     };
@@ -47,5 +46,15 @@ export default function ConfirmPage() {
       {status === 'success' && <p>Email confirmed! Redirecting...</p>}
       {status === 'error' && <p>Something went wrong. Please try again.</p>}
     </div>
+  );
+}
+
+export default function ConfirmPage() {
+  return (
+    <Suspense
+      fallback={<div className="p-4 text-center">Loading confirmation...</div>}
+    >
+      <ConfirmContent />
+    </Suspense>
   );
 }
