@@ -1,9 +1,29 @@
 ﻿'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [orgName, setOrgName] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user) router.push('/dashboard');
+        }
+      } catch (err) {
+        console.error('Auth check error:', err);
+      }
+    };
+    checkAuth();
+  }, [router]);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     const res = await fetch('/api/auth/signup', {
@@ -12,45 +32,44 @@ export default function SignupPage() {
       body: JSON.stringify({ email, orgName }),
     });
     const data = await res.json();
-    if (res.ok) {
-      setMessage('Signed up successfully â€” check your email!');
-    } else {
-      setMessage(data.error || 'Signup failed');
-    }
+    setMessage(
+      res.ok
+        ? 'Signed up successfully — check your email!'
+        : data.error || 'Signup failed',
+    );
   };
+
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
-      {' '}
-      <form onSubmit={handleSignup} className="w-full max-w-md space-y-6">
-        {' '}
-        <h1 className="text-2xl font-semibold text-center">Sign Up</h1>{' '}
+    <div className="flex items-center justify-center min-h-screen bg-base-200">
+      <div className="w-full max-w-md mx-auto bg-base-100 shadow-lg rounded-lg p-8">
+        <h1 className="text-2xl font-bold text-center mb-6">Sign Up</h1>
         {message && (
-          <div className="bg-blue-100 text-blue-700 p-2 rounded">{message}</div>
-        )}{' '}
-        <input
-          type="text"
-          required
-          placeholder="Organisation Name"
-          className="w-full p-2 border rounded"
-          value={orgName}
-          onChange={(e) => setOrgName(e.target.value)}
-        />{' '}
-        <input
-          type="email"
-          required
-          placeholder="Your email"
-          className="w-full p-2 border rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />{' '}
-        <button
-          type="submit"
-          className="w-full bg-black text-white p-2 rounded hover:bg-gray-800 transition"
-        >
-          {' '}
-          Sign Up{' '}
-        </button>{' '}
-      </form>{' '}
-    </main>
+          <div className="alert alert-info mb-4">
+            <span>{message}</span>
+          </div>
+        )}
+        <form onSubmit={handleSignup} className="space-y-4">
+          <input
+            type="text"
+            required
+            placeholder="Organisation Name"
+            className="input input-bordered w-full"
+            value={orgName}
+            onChange={(e) => setOrgName(e.target.value)}
+          />
+          <input
+            type="email"
+            required
+            placeholder="Your email"
+            className="input input-bordered w-full"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primary w-full">
+            Sign Up
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
