@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [orgName, setOrgName] = useState('');
+  const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
 
@@ -29,7 +30,7 @@ export default function SignupPage() {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, orgName }),
+      body: JSON.stringify({ email, password, orgName }),
     });
     const data = await res.json();
     setMessage(
