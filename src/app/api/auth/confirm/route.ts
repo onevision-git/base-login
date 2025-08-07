@@ -1,10 +1,12 @@
+// File: src/app/api/auth/confirm/route.ts
+
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
-import { cookies } from 'next/headers';
-import { User } from '@auth/models/User';
 
-const JWT_SECRET = process.env.ACCESS_TOKEN_SECRET!;
+import { User } from '../../../../models/User';
+import connect from '../../../../lib/db';
+
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export async function POST(req: Request) {
   try {
@@ -14,12 +16,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing token' }, { status: 400 });
     }
 
+    await connect();
+
     const payload = jwt.verify(token, JWT_SECRET) as {
       userId: string;
       email: string;
     };
-
-    await mongoose.connect(process.env.MONGODB_URI!);
 
     const user = await User.findById(payload.userId);
 
@@ -27,38 +29,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (!user.emailVerified) {
-      user.emailVerified = true;
-      await user.save();
+    if (user.emailVerified) {
+      return NextResponse.json({ message: 'Email already verified' });
     }
 
-    // Create short-lived access token for session
-    const accessToken = jwt.sign(
-      {
-        userId: user._id.toString(),
-        companyId: user.companyId?.toString(),
-      },
-      JWT_SECRET,
-      { expiresIn: '15m' },
-    );
+    user.emailVerified = true;
+    await user.save();
 
-    // Set HttpOnly cookie (Next.js 15+ requires awaiting cookies())
-    (await cookies()).set({
-      name: 'access_token',
-      value: accessToken,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: 60 * 15, // 15 minutes
-    });
-
-    // Redirect to dashboard
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-    );
-  } catch (err) {
-    console.error('Confirm error:', err);
+    return NextResponse.json({ message: 'Email confirmed successfully' });
+  } catch (error) {
+    console.error('Confirm error:', error);
     return NextResponse.json(
       { error: 'Invalid or expired token' },
       { status: 400 },

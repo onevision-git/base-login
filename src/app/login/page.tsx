@@ -1,64 +1,81 @@
-﻿'use client';
+'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.user) router.push('/dashboard');
-        }
-      } catch (err) {
-        console.error('Auth check error:', err);
-      }
-    };
-    checkAuth();
-  }, [router]);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/auth/signin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    const data = await res.json();
-    setMessage(
-      res.ok ? 'Magic link sent to your email' : data.error || 'Login failed',
-    );
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Login failed');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Unexpected error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-base-200">
-      <div className="w-full max-w-md mx-auto bg-base-100 shadow-lg rounded-lg p-8">
-        <h1 className="text-2xl font-bold text-center mb-6">Login</h1>
-        {message && (
-          <div className="alert alert-info mb-4">
-            <span>{message}</span>
-          </div>
-        )}
-        <form onSubmit={handleLogin} className="space-y-4">
+    <main className="min-h-screen flex items-center justify-center bg-base-200 p-4">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm bg-white p-6 rounded shadow"
+      >
+        <h1 className="text-2xl font-bold mb-4">Sign In</h1>
+
+        {error && <p className="mb-4 text-red-600">{error}</p>}
+
+        <label className="block mb-3">
+          <span className="block text-sm font-medium">Email</span>
           <input
             type="email"
             required
-            placeholder="Your email"
-            className="input input-bordered w-full"
+            className="mt-1 block w-full border-gray-300 rounded"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <button type="submit" className="btn btn-primary w-full">
-            Send Magic Link
-          </button>
-        </form>
-      </div>
-    </div>
+        </label>
+
+        <label className="block mb-4">
+          <span className="block text-sm font-medium">Password</span>
+          <input
+            type="password"
+            required
+            className="mt-1 block w-full border-gray-300 rounded"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          {loading ? 'Signing in…' : 'Sign In'}
+        </button>
+      </form>
+    </main>
   );
 }

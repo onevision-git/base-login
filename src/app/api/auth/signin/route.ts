@@ -1,73 +1,78 @@
-import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
-import { Resend } from 'resend';
-import { User } from '@auth/models/User';
+// File: src/app/api/auth/signin/route.ts
 
-const JWT_SECRET = process.env.ACCESS_TOKEN_SECRET!;
+import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+import { connect } from '../../../../lib/db';
+import { User } from '../../../../models/User';
+
+const JWT_SECRET = process.env.JWT_SECRET!;
+if (!JWT_SECRET) {
+  throw new Error('Missing ACCESS_TOKEN_SECRET');
+}
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
-
-    if (!email) {
-      return new Response(JSON.stringify({ error: 'Missing email' }), {
-        status: 400,
-      });
-    }
-
-    if (
-      !process.env.MONGODB_URI ||
-      !process.env.RESEND_API_KEY ||
-      !process.env.EMAIL_FROM
-    ) {
-      console.error('❌ Missing environment variables');
-      return new Response(
-        JSON.stringify({ error: 'Server misconfiguration' }),
-        { status: 500 },
+    const { email, password } = await req.json();
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Missing email or password' },
+        { status: 400 },
       );
     }
 
-    await mongoose.connect(process.env.MONGODB_URI);
+    await connect();
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+passwordHash');
     if (!user) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
-      });
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 },
+      );
+    }
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { error: 'Please verify email first' },
+        { status: 403 },
+      );
     }
 
-    // Generate magic link token
-    const token = jwt.sign({ userId: user._id.toString(), email }, JWT_SECRET, {
-      expiresIn: '24h',
-    });
-    const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/confirm?token=${token}`;
-
-    // Send magic link email
-    try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const emailRes = await resend.emails.send({
-        from: process.env.EMAIL_FROM,
-        to: email,
-        subject: 'Your login link',
-        html: `<p>Click the link below to sign in:</p>
-               <p><a href="${magicLink}">${magicLink}</a></p>`,
-      });
-      console.log('✅ Magic link sent to:', email, emailRes);
-    } catch (emailErr) {
-      console.error('❌ Email send error:', emailErr);
-      return new Response(JSON.stringify({ error: 'Failed to send email' }), {
-        status: 500,
-      });
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 },
+      );
     }
 
-    return new Response(
-      JSON.stringify({ message: 'Magic link sent — check your email!' }),
-      { status: 200 },
+    const token = jwt.sign(
+      {
+        userId: user._id.toString(),
+        email: user.email,
+        companyId: user.companyId,
+        role: user.role,
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' },
     );
-  } catch (err) {
-    console.error('❌ Signin error:', err);
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
-      status: 500,
+
+    const res = NextResponse.json({ message: 'Login successful' });
+    res.cookies.set({
+      name: 'token',
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
     });
+    return res;
+  } catch (err: unknown) {
+    console.error('Signin error:', err);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }

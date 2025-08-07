@@ -1,3 +1,5 @@
+// File: src/app/confirm/page.tsx
+
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
@@ -28,7 +30,7 @@ function ConfirmContent() {
 
         if (res.ok) {
           setStatus('success');
-          setTimeout(() => router.push('/dashboard'), 2000);
+          setTimeout(() => router.push('/signin'), 2000); // ✅ Go to login not dashboard
         } else {
           setStatus('error');
         }
@@ -43,7 +45,7 @@ function ConfirmContent() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-center p-4">
       {status === 'verifying' && <p>Verifying your account...</p>}
-      {status === 'success' && <p>Email confirmed! Redirecting...</p>}
+      {status === 'success' && <p>Email confirmed! Redirecting to login...</p>}
       {status === 'error' && <p>Something went wrong. Please try again.</p>}
     </div>
   );

@@ -1,4 +1,4 @@
-﻿// src/app/api/health/route.tsexport async function GET() {  // Stubbed health-check so CI/build wonâ€™t need a real MongoDB URI  return new Response(JSON.stringify({ status: 'ok' }), {    status: 200,    headers: { 'Content-Type': 'application/json' },  });}
+// src/app/api/health/route.tsexport async function GET() {  // Stubbed health-check so CI/build wonâ€™t need a real MongoDB URI  return new Response(JSON.stringify({ status: 'ok' }), {    status: 200,    headers: { 'Content-Type': 'application/json' },  });}
 export async function GET() {
   return new Response('OK');
 }
