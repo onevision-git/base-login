@@ -5,8 +5,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
 
-import { Company } from '../../../../models/Company';
-import { User } from '../../../../models/User';
+import Company from '../../../../models/Company';
+import User from '../../../../models/User';
 import connect from '../../../../lib/db';
 
 const resend = new Resend(process.env.RESEND_API_KEY);

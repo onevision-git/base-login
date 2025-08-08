@@ -1,12 +1,13 @@
 // File: src/app/dashboard/page.tsx
 
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import jwt from 'jsonwebtoken';
 import Link from 'next/link';
 import { connect } from '../../lib/db';
-import { User } from '../../models/User';
-import LogoutButton from '../../components/LogoutButton';
+import User from '../../models/User';
 
 export default async function DashboardPage() {
   // 1️⃣ Read & verify the JWT from the cookie
@@ -30,24 +31,24 @@ export default async function DashboardPage() {
 
   // 2️⃣ Connect to MongoDB and load the current user's role
   await connect();
-  const currentUser = await User.findById(userId).select('role').lean();
+  const currentUser = await User.findById(userId).select('role');
   const isAdmin = currentUser?.role === 'admin';
 
   // 3️⃣ Render the dashboard, showing the Invite Users link only for admins
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-4 bg-base-200">
-      <h1 className="text-3xl font-bold">Welcome to your dashboard</h1>
-      <p className="text-lg text-center">
-        You are successfully logged in as <strong>{email}</strong>.
-      </p>
+    <>
+      <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-4 bg-base-200">
+        <h1 className="text-3xl font-bold">Welcome to your dashboard</h1>
+        <p className="text-lg text-center">
+          You are successfully logged in as <strong>{email}</strong>.
+        </p>
 
-      {isAdmin && (
-        <Link href="/team" className="btn btn-primary">
-          Invite Users
-        </Link>
-      )}
-
-      <LogoutButton />
-    </main>
+        {isAdmin && (
+          <Link href="/team" className="btn btn-primary">
+            Invite Users
+          </Link>
+        )}
+      </main>
+    </>
   );
 }
