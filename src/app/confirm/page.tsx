@@ -34,7 +34,7 @@ function ConfirmContent() {
         } else {
           setStatus('error');
         }
-      } catch (err) {
+      } catch {
         setStatus('error');
       }
     };
