@@ -2,15 +2,21 @@
 
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 import User from '../../../../models/User';
-import connect from '../../../../lib/db';
+import { connect } from '../../../../lib/db'; // named import
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+type ConfirmBody = {
+  token: string;
+};
+
 export async function POST(req: Request) {
   try {
-    const { token } = await req.json();
+    const raw = (await req.json()) as Partial<ConfirmBody>;
+    const token = typeof raw.token === 'string' ? raw.token : '';
 
     if (!token) {
       return NextResponse.json({ error: 'Missing token' }, { status: 400 });
@@ -18,12 +24,22 @@ export async function POST(req: Request) {
 
     await connect();
 
-    const payload = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      email: string;
-    };
+    let payload: { userId: string; email: string };
+    try {
+      payload = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        email: string;
+      };
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid or expired token' },
+        { status: 400 },
+      );
+    }
 
-    const user = await User.findById(payload.userId);
+    // Coerce to ObjectId to satisfy both TS and Mongoose
+    const userId = new mongoose.Types.ObjectId(payload.userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -40,8 +56,8 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Confirm error:', error);
     return NextResponse.json(
-      { error: 'Invalid or expired token' },
-      { status: 400 },
+      { error: 'Internal server error' },
+      { status: 500 },
     );
   }
 }

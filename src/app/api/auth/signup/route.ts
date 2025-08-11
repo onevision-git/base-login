@@ -7,23 +7,38 @@ import { Resend } from 'resend';
 
 import Company from '../../../../models/Company';
 import User from '../../../../models/User';
-import connect from '../../../../lib/db';
+import { connect } from '../../../../lib/db';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const JWT_SECRET = process.env.JWT_SECRET!;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
+type SignupBody = {
+  email: string;
+  password: string;
+  orgName: string;
+};
+
 export async function POST(req: Request) {
   try {
-    const { email, password, orgName } = await req.json();
+    const raw = (await req.json()) as Partial<SignupBody>;
+
+    const email =
+      typeof raw.email === 'string' ? raw.email.trim().toLowerCase() : '';
+    const password = typeof raw.password === 'string' ? raw.password : '';
+    const orgName = typeof raw.orgName === 'string' ? raw.orgName.trim() : '';
 
     if (!email || !password || !orgName) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
+    if (!email.includes('@')) {
+      return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
+    }
 
     await connect();
 
-    const domain = email.split('@')[1];
+    // domain is definitely a string from here
+    const domain = email.split('@')[1]!;
     let company = await Company.findOne({ domain });
 
     if (!company) {

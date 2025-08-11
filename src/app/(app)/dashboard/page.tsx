@@ -1,13 +1,11 @@
 // File: src/app/dashboard/page.tsx
 
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import jwt from 'jsonwebtoken';
 import Link from 'next/link';
-import { connect } from '../../lib/db';
-import User from '../../models/User';
+import { connect } from '../../../lib/db';
+import User from '../../../models/User';
 
 export default async function DashboardPage() {
   // 1️⃣ Read & verify the JWT from the cookie

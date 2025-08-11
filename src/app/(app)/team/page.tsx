@@ -4,9 +4,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import jwt from 'jsonwebtoken';
 import TeamInviteForm from './TeamInviteForm';
-import { connect } from '../../lib/db';
-import { UserModel, CompanyModel } from '../../models';
-import { getInviteInfo } from '../../../packages/auth/src/service';
+import { connect } from '../../../lib/db';
+import { UserModel, CompanyModel } from '../../../models';
+import { getInviteInfo } from '../../../../packages/auth/src/service';
 
 export default async function TeamPage() {
   // 1. JWT guard (identical to dashboard)
