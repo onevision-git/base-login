@@ -1,11 +1,16 @@
 // File: src/app/(app)/team/page.tsx
 
+export const dynamic = 'force-dynamic';
+
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import jwt from 'jsonwebtoken';
 import TeamInviteForm from './TeamInviteForm';
+import ResendInviteButton from './ResendInviteButton';
 import { connect } from '../../../lib/db';
 import User from '../../../models/User';
+import Invite from '../../../models/Invite';
+import mongoose from 'mongoose';
 import { getInviteInfo } from '../../../../packages/auth/src/service';
 
 type JwtPayload = {
@@ -21,45 +26,15 @@ function getDomainFromEmail(email: string | undefined | null): string | null {
   return parts[1].toLowerCase();
 }
 
-/** ---- TEMP: mock invites so we can validate UI before wiring real data ---- */
 type InviteStatus = 'PENDING' | 'ACCEPTED';
-type Invite = {
+
+type UiInvite = {
   id: string;
   email: string;
   status: InviteStatus;
-  invitedAt: string; // ISO date
-  acceptedAt?: string | null;
+  invitedAt: string | null;
+  acceptedAt: string | null;
 };
-
-const mockInvites: Invite[] = [
-  {
-    id: 'inv_1',
-    email: 'alice@example.com',
-    status: 'PENDING',
-    invitedAt: '2025-08-01T10:15:00.000Z',
-  },
-  {
-    id: 'inv_2',
-    email: 'ben@example.com',
-    status: 'ACCEPTED',
-    invitedAt: '2025-08-02T14:30:00.000Z',
-    acceptedAt: '2025-08-03T09:05:00.000Z',
-  },
-  {
-    id: 'inv_3',
-    email: 'carol@example.com',
-    status: 'PENDING',
-    invitedAt: '2025-08-05T16:45:00.000Z',
-  },
-];
-
-// Server Action (mock) — we’ll wire this to real resend next step
-async function resendInviteAction(formData: FormData) {
-  'use server';
-  const inviteId = formData.get('inviteId');
-  await new Promise((r) => setTimeout(r, 300)); // simulate latency
-  console.log('[MOCK] Resend requested for invite:', inviteId);
-}
 
 function formatDate(iso?: string | null) {
   if (!iso) return '—';
@@ -67,10 +42,24 @@ function formatDate(iso?: string | null) {
   return Number.isNaN(d.getTime()) ? iso! : d.toLocaleString();
 }
 
-/** ---- PAGE ---- */
+function normaliseStatus(raw?: string | null): InviteStatus {
+  const s = (raw ?? '').toString().trim().toUpperCase();
+  return s === 'ACCEPTED' ? 'ACCEPTED' : 'PENDING';
+}
+
+// Narrow types we need from Mongo
+type UserEmailOnly = { email?: string } | null;
+
+type InviteLean = {
+  _id: mongoose.Types.ObjectId;
+  email: string;
+  status?: string | null;
+  invitedAt?: Date | null;
+  acceptedAt?: Date | null;
+};
+
 export default async function TeamPage() {
-  // 1) Auth via JWT cookie
-  const cookieStore = await cookies(); // your setup requires await
+  const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
   if (!token) redirect('/login');
 
@@ -81,29 +70,48 @@ export default async function TeamPage() {
     redirect('/login');
   }
 
-  // 2) Ensure DB connection (used below + by service)
   await connect();
 
-  // 3) Invite info (counts + permission)
   const { userCount, maxUsers, canInvite } = await getInviteInfo(
     payload.companyId,
     payload.userId,
   );
 
-  // 4) Determine inviter domain (prefer JWT email, fallback to DB)
+  // Kept for future domain‑match UI (currently not passed to the form)
   let inviterDomain = getDomainFromEmail(payload.email);
-
   if (!inviterDomain) {
-    // Cast the model for this call so TS doesn't choke on overloads
-    const inviterDoc = await (User as any)
+    const inviterDoc = await (
+      User as unknown as mongoose.Model<{ email?: string }>
+    )
       .findOne({ _id: payload.userId }, { email: 1, _id: 0 })
+      .lean<{ email?: string }>()
       .exec();
 
-    const inviterEmail = (inviterDoc as { email?: string } | null)?.email;
+    const inviterEmail = (inviterDoc as UserEmailOnly)?.email;
     inviterDomain = getDomainFromEmail(inviterEmail) ?? '';
   }
 
-  // 5) Render
+  const companyObjectId = new mongoose.Types.ObjectId(payload.companyId);
+
+  const inviteModel = Invite as unknown as mongoose.Model<InviteLean>;
+
+  const dbInvites = await inviteModel
+    .find(
+      { companyId: companyObjectId },
+      { email: 1, status: 1, invitedAt: 1, acceptedAt: 1 },
+    )
+    .sort({ invitedAt: -1 })
+    .lean()
+    .exec();
+
+  const invites: UiInvite[] = (dbInvites ?? []).map((inv) => ({
+    id: inv._id?.toString?.() ?? '',
+    email: inv.email ?? '',
+    status: normaliseStatus(inv.status ?? undefined),
+    invitedAt: inv.invitedAt ? new Date(inv.invitedAt).toISOString() : null,
+    acceptedAt: inv.acceptedAt ? new Date(inv.acceptedAt).toISOString() : null,
+  }));
+
   return (
     <main className="min-h-screen flex flex-col gap-6 p-4 bg-base-200">
       <h1 className="text-3xl font-bold">Team Invites</h1>
@@ -122,8 +130,8 @@ export default async function TeamPage() {
         <div className="p-4">
           <h2 className="text-lg font-semibold">Existing invites</h2>
           <p className="text-sm text-gray-500">
-            Lists invited emails and status. Resend is mocked for now; we’ll
-            wire it up next.
+            Lists invited emails and status. Resend now calls the API and
+            refreshes the table.
           </p>
         </div>
 
@@ -141,7 +149,7 @@ export default async function TeamPage() {
               </tr>
             </thead>
             <tbody>
-              {mockInvites.map((inv) => {
+              {invites.map((inv) => {
                 const accepted = inv.status === 'ACCEPTED';
                 return (
                   <tr key={inv.id} className="border-t">
@@ -160,30 +168,15 @@ export default async function TeamPage() {
                     <td className="px-4 py-3">{formatDate(inv.invitedAt)}</td>
                     <td className="px-4 py-3">{formatDate(inv.acceptedAt)}</td>
                     <td className="px-4 py-3 text-right">
-                      <form action={resendInviteAction}>
-                        <input type="hidden" name="inviteId" value={inv.id} />
-                        <button
-                          type="submit"
-                          disabled={accepted}
-                          title={
-                            accepted
-                              ? 'Invite already accepted'
-                              : 'Resend invite email'
-                          }
-                          className={`rounded-md px-3 py-1.5 text-sm border transition ${
-                            accepted
-                              ? 'opacity-40 cursor-not-allowed'
-                              : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          Resend
-                        </button>
-                      </form>
+                      <ResendInviteButton
+                        inviteId={inv.id}
+                        disabled={accepted}
+                      />
                     </td>
                   </tr>
                 );
               })}
-              {mockInvites.length === 0 && (
+              {invites.length === 0 && (
                 <tr>
                   <td className="px-4 py-6 text-gray-500" colSpan={5}>
                     No invites yet.
@@ -195,8 +188,7 @@ export default async function TeamPage() {
         </div>
 
         <div className="p-3 text-xs text-gray-500 border-t">
-          “Resend” posts a server action that currently just logs. We’ll hook it
-          to the real mailer next.
+          Resend sends a new 24h link and bumps “Invited” to now.
         </div>
       </section>
     </main>

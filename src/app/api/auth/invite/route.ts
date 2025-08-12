@@ -3,12 +3,14 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 import { getInviteInfo } from '../../../../../packages/auth/src/service';
 import { sendMagicLink } from '../../../../../packages/auth/src/email';
 
 import { connect } from '@/lib/db';
 import User from '@/models/User';
+import Invite from '@/models/Invite';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL as string;
@@ -26,6 +28,23 @@ function escapeRegex(input: string) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Narrow types we read/write on Invite in this route
+type InviteDocShape = mongoose.Document & {
+  companyId: mongoose.Types.ObjectId;
+  email: string;
+  status: 'PENDING' | 'ACCEPTED';
+  invitedBy: mongoose.Types.ObjectId | string;
+  invitedAt: Date | null;
+  acceptedAt: Date | null;
+  role?: 'admin' | 'standard';
+};
+const InviteModel = Invite as unknown as mongoose.Model<InviteDocShape>;
+
+type InviteRequestBody = {
+  email?: string;
+  role?: 'standard' | 'admin';
+};
+
 export async function POST(req: Request) {
   // 1) Authenticate
   const cookieStore = await cookies();
@@ -39,14 +58,18 @@ export async function POST(req: Request) {
     return bad(401, 'Unauthorized');
   }
 
-  // 2) Authorisation / seat limit (ensures inviter is admin via service)
+  // 2) Authorisation / seat limit
   const { canInvite } = await getInviteInfo(payload.companyId, payload.userId);
   if (!canInvite) return bad(403, 'Forbidden');
 
-  // 3) Parse body
-  const body = await req.json().catch(() => ({}) as any);
-  const email: string = body?.email;
-  const role: 'standard' | 'admin' = body?.role;
+  // 3) Parse body (no 'any')
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+  const { email, role } = (body ?? {}) as InviteRequestBody;
 
   if (
     !email ||
@@ -69,6 +92,7 @@ export async function POST(req: Request) {
   // 5) Prevent inviting an already registered user (case-insensitive)
   try {
     await connect();
+
     const exists = await User.exists({
       email: { $regex: `^${escapeRegex(inviteeEmail)}$`, $options: 'i' },
     });
@@ -93,6 +117,22 @@ export async function POST(req: Request) {
 
     const inviteLink = `${APP_URL}/accept-invite?token=${inviteToken}`;
     await sendMagicLink(inviteeEmail, inviteLink);
+
+    // 7) Persist the invite so /team can list it
+    try {
+      await InviteModel.create({
+        companyId: new mongoose.Types.ObjectId(payload.companyId),
+        email: inviteeEmail,
+        status: 'PENDING',
+        invitedBy: new mongoose.Types.ObjectId(payload.userId),
+        invitedAt: new Date(),
+        acceptedAt: null,
+        role,
+      });
+    } catch (e) {
+      console.error('[invite] create error:', e);
+      // Non-fatal: email already sent; UI will still function
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {

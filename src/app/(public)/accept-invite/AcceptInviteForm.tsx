@@ -1,4 +1,4 @@
-// File: src/app/accept-invite/AcceptInviteForm.tsx
+// File: src/app/(public)/accept-invite/AcceptInviteForm.tsx
 'use client';
 
 import React, { useState, FormEvent } from 'react';
@@ -8,16 +8,12 @@ interface AcceptInviteFormProps {
   inviteToken: string;
   email: string;
   role: 'standard' | 'admin';
-  inviterId: string;
-  companyId: string;
 }
 
 export default function AcceptInviteForm({
   inviteToken,
   email,
   role,
-  inviterId,
-  companyId,
 }: AcceptInviteFormProps) {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -48,7 +44,6 @@ export default function AcceptInviteForm({
       const result = await res.json();
 
       if (res.ok) {
-        // Redirect to login page on success
         router.push('/login');
       } else {
         setMessage(result.error || 'Failed to accept invite.');

@@ -1,6 +1,5 @@
 'use client';
 
-import LogoutButton from './LogoutButton';
 import Link from 'next/link';
 
 export default function Header() {
