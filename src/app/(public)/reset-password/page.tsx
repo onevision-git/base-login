@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -8,10 +8,17 @@ type ReqState = 'idle' | 'submitting' | 'success' | 'error';
 type CfmState = 'idle' | 'submitting' | 'success' | 'error';
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordContent() {
   const sp = useSearchParams();
   const token = sp.get('token');
 
-  // Set the document title client-side to replace the removed metadata export
   useEffect(() => {
     document.title = token ? 'Set a new password' : 'Forgot Password';
   }, [token]);
@@ -186,7 +193,9 @@ function ConfirmForm({ token }: { token: string }) {
                 type="password"
                 required
                 autoComplete="new-password"
-                className={`input input-bordered ${tooShort ? 'input-error' : ''}`}
+                className={`input input-bordered ${
+                  tooShort ? 'input-error' : ''
+                }`}
                 placeholder="********"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 type Status =
@@ -9,6 +9,14 @@ type Status =
   | { state: 'error'; message: string };
 
 export default function ConfirmPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ConfirmContent />
+    </Suspense>
+  );
+}
+
+function ConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>({ state: 'idle' });

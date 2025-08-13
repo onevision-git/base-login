@@ -1,10 +1,19 @@
-import mongoose from 'mongoose';
-
-const { Schema } = mongoose;
+import mongoose, { Document, Model, Schema } from 'mongoose';
 
 export type InviteStatus = 'PENDING' | 'ACCEPTED';
 
-const InviteSchema = new Schema(
+export interface IInvite extends Document {
+  companyId: mongoose.Types.ObjectId;
+  email: string;
+  status: InviteStatus;
+  invitedBy: mongoose.Types.ObjectId;
+  invitedAt: Date;
+  acceptedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const InviteSchema = new Schema<IInvite>(
   {
     companyId: {
       type: Schema.Types.ObjectId,
@@ -15,7 +24,7 @@ const InviteSchema = new Schema(
     email: {
       type: String,
       required: true,
-      index: true, // (not unique) allows multiple attempts over time
+      index: true, // not unique, allows multiple invites over time
     },
     status: {
       type: String,
@@ -41,6 +50,7 @@ const InviteSchema = new Schema(
   { timestamps: true },
 );
 
-// Re-use model if already compiled (Next.js hot reload)
-const Invite = mongoose.models.Invite || mongoose.model('Invite', InviteSchema);
+const Invite: Model<IInvite> =
+  mongoose.models.Invite || mongoose.model<IInvite>('Invite', InviteSchema);
+
 export default Invite;

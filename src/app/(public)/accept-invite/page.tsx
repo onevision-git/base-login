@@ -1,10 +1,18 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { Suspense, useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
 export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={<div>Loading…</div>}>
+      <AcceptInviteContent />
+    </Suspense>
+  );
+}
+
+function AcceptInviteContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
@@ -119,7 +127,9 @@ export default function AcceptInvitePage() {
             type="password"
             required
             minLength={8}
-            className={`w-full rounded-md border px-3 py-2 ${passwordsMismatch ? 'border-red-500' : ''}`}
+            className={`w-full rounded-md border px-3 py-2 ${
+              passwordsMismatch ? 'border-red-500' : ''
+            }`}
             placeholder="Re-enter your password"
             autoComplete="new-password"
             value={confirm}

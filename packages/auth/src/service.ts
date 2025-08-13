@@ -30,7 +30,7 @@ export async function createUserAndCompany(
 
   // 2. Lookup or create the company based on email domain
   const domain = email.split('@')[1];
-  let company = await Company.findOne({ domain }).exec();
+  let company = await Company.findOne({ domain });
   if (!company) {
     company = await Company.create({
       name: orgName,
@@ -40,7 +40,7 @@ export async function createUserAndCompany(
   }
 
   // 3. Prevent duplicate users
-  const existing = await User.findOne({ email }).exec();
+  const existing = await User.findOne({ email });
   if (existing) {
     throw new Error('User already exists');
   }
@@ -84,14 +84,14 @@ export async function getInviteInfo(
   const userCount = await User.countDocuments({
     companyId,
     emailVerified: true,
-  }).exec();
+  });
 
   // Load the company's maxUsers
-  const company = await Company.findById(companyId).select('maxUsers').exec();
+  const company = await Company.findById(companyId).select('maxUsers');
   const maxUsers = company?.maxUsers ?? 0;
 
   // Check if inviter is an admin
-  const inviter = await User.findById(userId).select('role').exec();
+  const inviter = await User.findById(userId).select('role');
   const isAdmin = inviter?.role === 'admin';
 
   return {
