@@ -6,39 +6,59 @@ import jwt from 'jsonwebtoken';
 
 import { connect } from '../../../../lib/db';
 import User from '../../../../models/User';
+import type { IUser } from '../../../../models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
-  throw new Error('Missing ACCESS_TOKEN_SECRET');
+  throw new Error('Missing JWT_SECRET');
 }
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
-    if (!email || !password) {
+    const body = await req.json();
+    const emailInput = (body?.email as string | undefined)?.trim();
+    const password = (body?.password as string | undefined) ?? '';
+
+    if (!emailInput || !password) {
       return NextResponse.json(
         { error: 'Missing email or password' },
         { status: 400 },
       );
     }
 
+    const email = emailInput.toLowerCase();
+
     await connect();
 
-    const user = await User.findOne({ email }).select('+passwordHash');
+    // Use lean<IUser>() to type the result and avoid `any`
+    const user = await User.findOne({ email })
+      .select('+passwordHash +password')
+      .lean<IUser>()
+      .exec();
+
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 },
       );
     }
-    if (!user.emailVerified) {
+
+    if (user.emailVerified === false) {
       return NextResponse.json(
         { error: 'Please verify email first' },
         { status: 403 },
       );
     }
 
-    const match = await bcrypt.compare(password, user.passwordHash);
+    const storedHash: string | undefined = user.passwordHash || user.password;
+    if (!storedHash) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 },
+      );
+    }
+
+    const match = await bcrypt.compare(password, storedHash);
     if (!match) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
@@ -48,9 +68,9 @@ export async function POST(req: Request) {
 
     const token = jwt.sign(
       {
-        userId: user._id.toString(),
+        userId: String(user._id),
         email: user.email,
-        companyId: user.companyId,
+        companyId: String(user.companyId),
         role: user.role,
       },
       JWT_SECRET,
@@ -68,7 +88,7 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
     return res;
-  } catch (err: unknown) {
+  } catch (err) {
     console.error('Signin error:', err);
     return NextResponse.json(
       { error: 'Internal server error' },

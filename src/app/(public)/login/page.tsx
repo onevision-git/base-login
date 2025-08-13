@@ -37,29 +37,40 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
+    const emailNorm = (email || '').trim().toLowerCase();
+    const passwordVal = password || '';
+
+    if (!emailNorm || !passwordVal) {
       setError('Please enter your email and password.');
       return;
     }
 
     try {
       setSubmitting(true);
+
       const res = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: emailNorm, password: passwordVal }),
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(
-          data?.error ||
-            'Sign in failed. Please check your details and try again.',
-        );
+        // Surface the exact server message if present
+        let msg = 'Sign in failed. Please check your details and try again.';
+        try {
+          const data = await res.json();
+          if (typeof data?.error === 'string' && data.error.trim()) {
+            msg = data.error;
+          }
+        } catch {
+          // ignore parse errors
+        }
+        setError(msg);
         return;
       }
 
+      // Success
       router.push('/dashboard');
     } catch {
       setError('Something went wrong. Please try again.');
@@ -73,44 +84,63 @@ export default function LoginPage() {
     setFpInfo(null);
     setFpError(null);
 
-    if (!forgotEmail) {
+    const emailNorm = (forgotEmail || '').trim().toLowerCase();
+    if (!emailNorm) {
       setFpError('Please enter your email.');
       return;
     }
 
+    setFpSubmitting(true);
     try {
-      setFpSubmitting(true);
-      const res = await fetch('/api/auth/password-reset', {
+      // 1) Try the REAL reset request (flag-controlled)
+      const res1 = await fetch('/api/auth/password-reset/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail }),
+        body: JSON.stringify({ email: emailNorm }),
       });
 
-      const data = await res.json().catch(() => ({}));
-
-      // Single info banner UX:
-      // - If the placeholder endpoint is enabled, we expect 501.
-      // - If disabled (404) or any other status, we still show an info message
-      //   that reset isn’t configured yet (keeps UX simple + honest).
-      if (res.ok || !res.ok) {
-        const serverMsg =
-          typeof data?.message === 'string' && data.message.trim().length > 0
+      // If the real endpoint is enabled, we expect 202.
+      if (res1.status === 202) {
+        const data = await res1.json().catch(() => ({}));
+        const msg =
+          typeof data?.message === 'string' && data.message.trim()
             ? data.message
+            : 'If an account exists for that email, we’ve sent a reset link.';
+        setFpInfo(msg);
+        return;
+      }
+
+      // If it’s disabled (404), fall back to the placeholder endpoint
+      if (res1.status === 404) {
+        const res2 = await fetch('/api/auth/password-reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailNorm }),
+        });
+
+        // Placeholder usually returns 501 with a message
+        const data2 = await res2.json().catch(() => ({}));
+        const serverMsg =
+          typeof data2?.message === 'string' && data2.message.trim()
+            ? data2.message
             : null;
 
+        const notConfiguredHint =
+          'Note: Password resets are not configured in this environment yet.';
         const genericMsg =
           'If this email exists, you will receive reset instructions when password resets are enabled.';
 
-        // Compose a single info string and ensure no red banner shows alongside.
-        const notConfiguredHint =
-          'Note: Password resets are not configured in this environment yet.';
         setFpInfo(
           [serverMsg, genericMsg, notConfiguredHint].filter(Boolean).join(' '),
         );
-        setFpError(null);
+        return;
       }
+
+      // Any other status from the real endpoint: keep it simple and informative
+      const fallbackMsg =
+        'If this email exists, you will receive reset instructions when password resets are enabled.';
+      setFpInfo(fallbackMsg);
     } catch {
-      // Network/fetch error: show red banner
       setFpError('Something went wrong. Please try again.');
     } finally {
       setFpSubmitting(false);
@@ -122,7 +152,6 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">Welcome back</h1>
-          <p className="opacity-80">Sign in to your account</p>
         </div>
 
         <div className="card bg-base-100 shadow-xl">
