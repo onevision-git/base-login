@@ -8,12 +8,12 @@ import { sendMagicLink } from './email';
 
 // Validate and load environment variables
 const MONGODB_URI = process.env.MONGODB_URI!;
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET!;
+const JWT_SECRET = process.env.JWT_SECRET!;
 const NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
-if (!MONGODB_URI || !ACCESS_TOKEN_SECRET || !NEXT_PUBLIC_APP_URL) {
+if (!MONGODB_URI || !JWT_SECRET || !NEXT_PUBLIC_APP_URL) {
   throw new Error(
-    'Missing required environment variables: MONGODB_URI, ACCESS_TOKEN_SECRET, NEXT_PUBLIC_APP_URL',
+    'Missing required environment variables: MONGODB_URI, JWT_SECRET, NEXT_PUBLIC_APP_URL',
   );
 }
 
@@ -58,7 +58,7 @@ export async function createUserAndCompany(
   // 5. Generate a JWT magic link
   const token = jwt.sign(
     { email: user.email, userId: user._id.toString() },
-    ACCESS_TOKEN_SECRET,
+    JWT_SECRET,
     { expiresIn: '24h' },
   );
   const magicLink = `${NEXT_PUBLIC_APP_URL}/confirm?token=${token}`;
