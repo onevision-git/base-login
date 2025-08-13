@@ -21,7 +21,8 @@
     "baseUrl": ".",
     "paths": {
       "@auth/*": ["packages/auth/src/*"],
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@models/*": ["src/models/*"]
     }
   },
   "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx"],

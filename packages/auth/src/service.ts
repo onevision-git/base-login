@@ -2,8 +2,8 @@
 
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
-import Company from '../../../src/models/Company';
-import User from '../../../src/models/User';
+import Company from '@models/Company';
+import User from '@models/User';
 import { sendMagicLink } from './email';
 
 // Validate and load environment variables
