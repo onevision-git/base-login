@@ -10,9 +10,6 @@ import Invite from '@/models/Invite';
 import { getInviteInfo } from '../../../../../../packages/auth/src/service';
 import { sendMagicLink } from '../../../../../../packages/auth/src/email';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL as string;
-
 function bad(status: number, error: string) {
   return NextResponse.json({ error }, { status });
 }
@@ -32,6 +29,16 @@ type InviteLean = {
 const InviteModel = Invite as unknown as mongoose.Model<InviteLean>;
 
 export async function POST(req: Request) {
+  // Load env vars at runtime, not import time
+  const JWT_SECRET = process.env.JWT_SECRET;
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!JWT_SECRET || !APP_URL) {
+    throw new Error(
+      'Missing required environment variables: JWT_SECRET, NEXT_PUBLIC_APP_URL',
+    );
+  }
+
   // 1) Auth
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
