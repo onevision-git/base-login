@@ -7,13 +7,17 @@ import mongoose from 'mongoose';
 import User from '../../../../models/User';
 import { connect } from '../../../../lib/db'; // named import
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-
 type ConfirmBody = {
   token: string;
 };
 
 export async function POST(req: Request) {
+  // Load env var at runtime
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    throw new Error('Missing JWT_SECRET');
+  }
+
   try {
     const raw = (await req.json()) as Partial<ConfirmBody>;
     const token = typeof raw.token === 'string' ? raw.token : '';
@@ -37,7 +41,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Coerce to ObjectId to satisfy both TS and Mongoose
     const userId = new mongoose.Types.ObjectId(payload.userId);
     const user = await User.findById(userId);
 

@@ -9,8 +9,6 @@ import { connect } from '@/lib/db';
 import User from '@/models/User';
 import Invite from '@/models/Invite';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-
 // Common JSON error helper
 function bad(status: number, error: string) {
   return NextResponse.json({ error }, { status });
@@ -50,7 +48,13 @@ const InviteModel = Invite as unknown as mongoose.Model<MinimalInviteDoc>;
 
 // Handle POST from the Accept Invite form
 export async function POST(req: Request) {
-  // Accept either application/json or form POSTs (application/x-www-form-urlencoded / multipart/form-data)
+  // Load env var at runtime
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    throw new Error('Missing JWT_SECRET');
+  }
+
+  // Accept either application/json or form POSTs
   let token: string | null = null;
   let password: string | null = null;
   let confirm: string | null = null;
@@ -91,8 +95,6 @@ export async function POST(req: Request) {
   try {
     await connect();
 
-    // If the user already exists, mark the latest invite as accepted (if not already),
-    // then send them to login with a hint.
     const existing = await User.exists({
       email: { $regex: `^${escapeRegex(email)}$`, $options: 'i' },
     });
@@ -102,10 +104,8 @@ export async function POST(req: Request) {
       return NextResponse.redirect(new URL('/login?already=1', req.url));
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user (explicitly cast companyId to ObjectId to avoid implicit casts)
     const doc = new UserModel({
       email,
       passwordHash,
@@ -116,11 +116,8 @@ export async function POST(req: Request) {
     });
 
     await doc.save();
-
-    // Mark the corresponding invite as accepted for this email/company
     await markLatestInviteAccepted(payload.companyId, email);
 
-    // Redirect to login with a success flag so UI can show a toast/message
     return NextResponse.redirect(new URL('/login?accepted=1', req.url));
   } catch (e) {
     console.error('accept-invite error:', e);
@@ -128,7 +125,6 @@ export async function POST(req: Request) {
   }
 }
 
-// Update the most recent pending invite for this company+email
 async function markLatestInviteAccepted(
   companyId: string,
   email: string,
@@ -148,7 +144,6 @@ async function markLatestInviteAccepted(
   }
 }
 
-// Small util copied from your invite route
 function escapeRegex(input: string) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

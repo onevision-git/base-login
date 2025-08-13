@@ -5,15 +5,6 @@ import { sendPasswordResetEmail } from '@/lib/email';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
 import type { IUser } from '@/models/User';
 
-const ENABLED = process.env.ENABLE_PASSWORD_RESET === 'true';
-
-// 5 tries per 15 minutes per (ip + email) — tune as needed
-const RL_LIMIT = parseInt(process.env.RESET_RL_LIMIT || '5', 10);
-const RL_WINDOW_MS = parseInt(
-  process.env.RESET_RL_WINDOW_MS || String(15 * 60 * 1000),
-  10,
-);
-
 function getClientIp(req: Request): string {
   const xfwd = req.headers.get('x-forwarded-for');
   if (xfwd) {
@@ -26,6 +17,13 @@ function getClientIp(req: Request): string {
 }
 
 export async function POST(req: Request) {
+  const ENABLED = process.env.ENABLE_PASSWORD_RESET === 'true';
+  const RL_LIMIT = parseInt(process.env.RESET_RL_LIMIT || '5', 10);
+  const RL_WINDOW_MS = parseInt(
+    process.env.RESET_RL_WINDOW_MS || String(15 * 60 * 1000),
+    10,
+  );
+
   if (!ENABLED) {
     return new NextResponse('Not Found', {
       status: 404,

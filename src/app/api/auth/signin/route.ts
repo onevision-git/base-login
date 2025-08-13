@@ -8,12 +8,12 @@ import { connect } from '../../../../lib/db';
 import User from '../../../../models/User';
 import type { IUser } from '../../../../models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('Missing JWT_SECRET');
-}
-
 export async function POST(req: Request) {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    throw new Error('Missing JWT_SECRET');
+  }
+
   try {
     const body = await req.json();
     const emailInput = (body?.email as string | undefined)?.trim();

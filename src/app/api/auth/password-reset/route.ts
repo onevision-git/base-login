@@ -1,17 +1,11 @@
 // src/app/api/auth/password-reset/route.ts
 import { NextResponse } from 'next/server';
 
-function isPlaceholderEnabled() {
-  return (
-    (process.env.ENABLE_PASSWORD_RESET_PLACEHOLDER || '').toLowerCase() ===
-    'true'
-  );
-}
-
 export async function POST(req: Request) {
-  const enabled = isPlaceholderEnabled();
+  const enabled =
+    (process.env.ENABLE_PASSWORD_RESET_PLACEHOLDER || '').toLowerCase() ===
+    'true';
 
-  // Always include a debug header so you can see what the server read.
   const baseInit: ResponseInit = {
     headers: { 'x-reset-placeholder-enabled': String(enabled) },
   };
@@ -42,13 +36,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Placeholder behaviour
     return NextResponse.json(
       {
         message: 'Password reset is not configured in this environment.',
         received: { email },
       },
-      { status: 501, ...baseInit }, // Not Implemented
+      { status: 501, ...baseInit },
     );
   } catch {
     return NextResponse.json(
@@ -59,12 +52,16 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const enabled =
+    (process.env.ENABLE_PASSWORD_RESET_PLACEHOLDER || '').toLowerCase() ===
+    'true';
+
   return NextResponse.json(
     { error: 'Method not allowed.' },
     {
       status: 405,
       headers: {
-        'x-reset-placeholder-enabled': String(isPlaceholderEnabled()),
+        'x-reset-placeholder-enabled': String(enabled),
       },
     },
   );

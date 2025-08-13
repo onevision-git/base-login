@@ -8,8 +8,6 @@ import { getCollection } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 import type { IUser } from '@/models/User';
 
-const ENABLED = process.env.ENABLE_PASSWORD_RESET === 'true';
-
 // Helper to make consistent JSON responses (without leaking details)
 function json(
   status: number,
@@ -26,6 +24,8 @@ function json(
 }
 
 export async function POST(req: Request) {
+  const ENABLED = process.env.ENABLE_PASSWORD_RESET === 'true';
+
   if (!ENABLED) {
     return new NextResponse('Not Found', {
       status: 404,
@@ -52,18 +52,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    // 1) Verify token (checks expiry/used)
     const verified = await verifyResetToken(token);
     if (!verified) {
       return json(400, { error: 'Invalid or expired token.' });
     }
 
     const emailLc = verified.email.toLowerCase();
-
-    // 2) Hash the password (bcrypt, 12 rounds)
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
-    // 3) Update the user’s password
     const users = await getCollection<IUser>('users');
     const now = new Date();
     await users.updateOne(
@@ -78,7 +74,6 @@ export async function POST(req: Request) {
       },
     );
 
-    // 4) Consume token and mark any others as used
     await consumeResetToken(token);
     const tokens = await getCollection<ResetTokenDoc>('password_reset_tokens');
     await tokens.updateMany(
