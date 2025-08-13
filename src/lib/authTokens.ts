@@ -13,17 +13,12 @@ export type AuthTokenPayload = JwtPayload & {
 };
 
 /**
- * Verify a JWT string and ensure it's still valid for the user:
- * - Signature + expiry check
- * - User exists
- * - If user.passwordUpdatedAt is set, token.iat must be >= passwordUpdatedAt
- *
  * IMPORTANT: Never throw on missing env during build; return a failure instead.
  */
 export async function verifyJwtAndUser(token: string) {
   const JWT_SECRET = process.env.JWT_SECRET;
   if (!JWT_SECRET) {
-    // Treat as an auth failure rather than throwing, so Next build doesn't crash.
+    // Treat as auth failure so Next build doesn't crash.
     return { ok: false as const, status: 500, reason: 'missing-secret' };
   }
 

@@ -12,9 +12,6 @@ import { connect } from '@/lib/db';
 import User from '@/models/User';
 import Invite from '@/models/Invite';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL as string;
-
 function bad(status: number, error: string) {
   return NextResponse.json({ error }, { status });
 }
@@ -28,7 +25,6 @@ function escapeRegex(input: string) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Narrow types we read/write on Invite in this route
 type InviteDocShape = mongoose.Document & {
   companyId: mongoose.Types.ObjectId;
   email: string;
@@ -46,6 +42,15 @@ type InviteRequestBody = {
 };
 
 export async function POST(req: Request) {
+  // Load env at runtime (prevents Next build-time crashes)
+  const JWT_SECRET = process.env.JWT_SECRET;
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+  if (!JWT_SECRET || !APP_URL) {
+    throw new Error(
+      'Missing required environment variables: JWT_SECRET, NEXT_PUBLIC_APP_URL',
+    );
+  }
+
   // 1) Authenticate
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
@@ -62,7 +67,7 @@ export async function POST(req: Request) {
   const { canInvite } = await getInviteInfo(payload.companyId, payload.userId);
   if (!canInvite) return bad(403, 'Forbidden');
 
-  // 3) Parse body (no 'any')
+  // 3) Parse body
   let body: unknown;
   try {
     body = await req.json();
@@ -115,7 +120,7 @@ export async function POST(req: Request) {
       { expiresIn: '24h' },
     );
 
-    const inviteLink = `${APP_URL}/accept-invite?token=${inviteToken}`;
+    const inviteLink = `${APP_URL.replace(/\/$/, '')}/accept-invite?token=${encodeURIComponent(inviteToken)}`;
     await sendMagicLink(inviteeEmail, inviteLink);
 
     // 7) Persist the invite so /team can list it
