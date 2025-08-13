@@ -9,10 +9,6 @@ import Company from '../../../../models/Company';
 import User from '../../../../models/User';
 import { connect } from '../../../../lib/db';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const JWT_SECRET = process.env.JWT_SECRET!;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
 type SignupBody = {
   email: string;
   password: string;
@@ -20,6 +16,21 @@ type SignupBody = {
 };
 
 export async function POST(req: Request) {
+  // Resolve env at runtime (not at import time)
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    throw new Error('Missing JWT_SECRET');
+  }
+  const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+  // Prefer NEXT_PUBLIC_APP_URL, fall back to request host
+  const appUrlEnv = process.env.NEXT_PUBLIC_APP_URL;
+  const inferredBase = `${new URL(req.url).protocol}//${req.headers.get('host')}`;
+  const APP_URL = appUrlEnv && appUrlEnv.trim() ? appUrlEnv : inferredBase;
+  const BASE = APP_URL.replace(/\/$/, '');
+
+  // Lazy init email client only if configured
+  const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+
   try {
     const raw = (await req.json()) as Partial<SignupBody>;
 
@@ -37,7 +48,7 @@ export async function POST(req: Request) {
 
     await connect();
 
-    // domain is definitely a string from here
+    // Create / reuse company by domain
     const domain = email.split('@')[1]!;
     let company = await Company.findOne({ domain });
 
@@ -67,24 +78,33 @@ export async function POST(req: Request) {
       emailVerified: false,
     });
 
+    // Sign a one-time confirm token
     const token = jwt.sign(
       { email: user.email, userId: user._id },
       JWT_SECRET,
       { expiresIn: '24h' },
     );
 
-    const confirmUrl = `${APP_URL}/confirm?token=${token}`;
+    const confirmUrl = `${BASE}/confirm?token=${encodeURIComponent(token)}`;
 
-    try {
-      const response = await resend.emails.send({
-        from: 'noreply@onevision.co.uk',
-        to: email,
-        subject: 'Confirm your email',
-        html: `<p>Thanks for signing up. Please <a href="${confirmUrl}">click here to confirm your email</a>.</p>`,
-      });
-      console.log('✔ Email sent via Resend:', response);
-    } catch (emailError) {
-      console.error('❌ Error sending email via Resend:', emailError);
+    // Send email if configured; otherwise just log the URL
+    if (resend) {
+      try {
+        const response = await resend.emails.send({
+          from: 'noreply@onevision.co.uk',
+          to: email,
+          subject: 'Confirm your email',
+          html: `<p>Thanks for signing up. Please <a href="${confirmUrl}">click here to confirm your email</a>.</p>`,
+        });
+        console.log('✔ Email sent via Resend:', response);
+      } catch (emailError) {
+        console.error('❌ Error sending email via Resend:', emailError);
+      }
+    } else {
+      console.warn(
+        '[signup] RESEND_API_KEY not set; confirmation URL:',
+        confirmUrl,
+      );
     }
 
     return NextResponse.json({ message: 'Confirmation email sent' });
