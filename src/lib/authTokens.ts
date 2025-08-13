@@ -5,11 +5,6 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { connect } from './db';
 import User from '../models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || '';
-if (!JWT_SECRET) {
-  throw new Error('Missing JWT_SECRET');
-}
-
 export type AuthTokenPayload = JwtPayload & {
   userId: string;
   email: string;
@@ -22,8 +17,16 @@ export type AuthTokenPayload = JwtPayload & {
  * - Signature + expiry check
  * - User exists
  * - If user.passwordUpdatedAt is set, token.iat must be >= passwordUpdatedAt
+ *
+ * IMPORTANT: Never throw on missing env during build; return a failure instead.
  */
 export async function verifyJwtAndUser(token: string) {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    // Treat as an auth failure rather than throwing, so Next build doesn't crash.
+    return { ok: false as const, status: 500, reason: 'missing-secret' };
+  }
+
   try {
     const payload = jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
 
