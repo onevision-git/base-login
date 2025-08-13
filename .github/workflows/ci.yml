@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      NODE_ENV: production
       CI: true
       NEXT_TELEMETRY_DISABLED: '1'
+      HUSKY: '0' 
       # Secrets required by build (lazy-read at runtime too, but present here keeps SSR/imports happy)
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
