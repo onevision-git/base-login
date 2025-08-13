@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - '**' # ✅ triggers CI on all branches
+      - '**'          # run CI on all branches
   pull_request:
     branches:
       - main
@@ -13,10 +13,15 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      NODE_ENV: production
+      CI: true
+      NEXT_TELEMETRY_DISABLED: '1'
+      # Secrets required by build (lazy-read at runtime too, but present here keeps SSR/imports happy)
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
       MONGODB_URI: ${{ secrets.MONGODB_URI }}
-      ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
       NEXTAUTH_URL: http://localhost:3000
 
     steps:
@@ -26,8 +31,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20'
           cache: 'npm'
+
+      - name: Cache Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/.next/cache
+          key: next-cache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            next-cache-${{ runner.os }}-
 
       - name: Install dependencies
         run: npm ci
@@ -36,4 +50,10 @@ jobs:
         run: npm run build
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint --if-present
+
+      - name: Type check
+        run: npm run typecheck --if-present
+
+      - name: Test
+        run: npm test --if-present
