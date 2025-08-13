@@ -31,6 +31,7 @@ type InviteStatus = 'PENDING' | 'ACCEPTED';
 type UiInvite = {
   id: string;
   email: string;
+  role: string; // derived from User collection
   status: InviteStatus;
   invitedAt: string | null;
   acceptedAt: string | null;
@@ -47,6 +48,12 @@ function normaliseStatus(raw?: string | null): InviteStatus {
   return s === 'ACCEPTED' ? 'ACCEPTED' : 'PENDING';
 }
 
+function formatRole(raw?: string | null): string {
+  const s = (raw ?? '').toString().trim();
+  if (!s) return '—';
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(); // admin -> Admin
+}
+
 // Narrow types we need from Mongo
 type UserEmailOnly = { email?: string } | null;
 
@@ -56,6 +63,13 @@ type InviteLean = {
   status?: string | null;
   invitedAt?: Date | null;
   acceptedAt?: Date | null;
+};
+
+type UserRoleLean = {
+  _id: mongoose.Types.ObjectId;
+  email?: string | null;
+  role?: string | null;
+  companyId?: mongoose.Types.ObjectId | string | null;
 };
 
 export default async function TeamPage() {
@@ -77,7 +91,7 @@ export default async function TeamPage() {
     payload.userId,
   );
 
-  // Kept for future domain‑match UI (currently not passed to the form)
+  // Kept for future domain-match UI (currently not passed to the form)
   let inviterDomain = getDomainFromEmail(payload.email);
   if (!inviterDomain) {
     const inviterDoc = await (
@@ -95,6 +109,7 @@ export default async function TeamPage() {
 
   const inviteModel = Invite as unknown as mongoose.Model<InviteLean>;
 
+  // 1) Load invites for this company
   const dbInvites = await inviteModel
     .find(
       { companyId: companyObjectId },
@@ -104,13 +119,48 @@ export default async function TeamPage() {
     .lean()
     .exec();
 
-  const invites: UiInvite[] = (dbInvites ?? []).map((inv) => ({
-    id: inv._id?.toString?.() ?? '',
-    email: inv.email ?? '',
-    status: normaliseStatus(inv.status ?? undefined),
-    invitedAt: inv.invitedAt ? new Date(inv.invitedAt).toISOString() : null,
-    acceptedAt: inv.acceptedAt ? new Date(inv.acceptedAt).toISOString() : null,
-  }));
+  // 2) Build a set of invite emails and fetch matching users (for roles)
+  const inviteEmails = Array.from(
+    new Set(
+      (dbInvites ?? [])
+        .map((i) => (i.email || '').toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+
+  let usersByEmail = new Map<string, string>();
+  if (inviteEmails.length > 0) {
+    const userModel = User as unknown as mongoose.Model<UserRoleLean>;
+    const dbUsers = await userModel
+      .find(
+        { companyId: companyObjectId, email: { $in: inviteEmails } },
+        { email: 1, role: 1 },
+      )
+      .lean()
+      .exec();
+
+    usersByEmail = new Map(
+      (dbUsers ?? []).map((u) => [
+        String(u.email || '').toLowerCase(),
+        String(u.role || ''),
+      ]),
+    );
+  }
+
+  // 3) Map invites to UI rows, deriving role from the matched user (if any)
+  const invites: UiInvite[] = (dbInvites ?? []).map((inv) => {
+    const roleRaw = usersByEmail.get((inv.email || '').toLowerCase()) || '';
+    return {
+      id: inv._id?.toString?.() ?? '',
+      email: inv.email ?? '',
+      role: formatRole(roleRaw),
+      status: normaliseStatus(inv.status ?? undefined),
+      invitedAt: inv.invitedAt ? new Date(inv.invitedAt).toISOString() : null,
+      acceptedAt: inv.acceptedAt
+        ? new Date(inv.acceptedAt).toISOString()
+        : null,
+    };
+  });
 
   return (
     <main className="min-h-screen flex flex-col gap-6 p-4 bg-base-200">
@@ -140,6 +190,7 @@ export default async function TeamPage() {
             <thead className="bg-gray-50 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium text-gray-600">Email</th>
+                <th className="px-4 py-3 font-medium text-gray-600">Role</th>
                 <th className="px-4 py-3 font-medium text-gray-600">Status</th>
                 <th className="px-4 py-3 font-medium text-gray-600">Invited</th>
                 <th className="px-4 py-3 font-medium text-gray-600">
@@ -154,6 +205,7 @@ export default async function TeamPage() {
                 return (
                   <tr key={inv.id} className="border-t">
                     <td className="px-4 py-3">{inv.email}</td>
+                    <td className="px-4 py-3">{inv.role}</td>
                     <td className="px-4 py-3">
                       {accepted ? (
                         <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
@@ -178,7 +230,7 @@ export default async function TeamPage() {
               })}
               {invites.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-gray-500" colSpan={5}>
+                  <td className="px-4 py-6 text-gray-500" colSpan={6}>
                     No invites yet.
                   </td>
                 </tr>

@@ -9,7 +9,7 @@ export default function DashboardHeader() {
       <nav className="container mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <span className="font-bold text-lg tracking-wide">
-            Base Login LOGGEDIN Dashboard
+            Dashboard - Base Login
           </span>
         </div>
         <ul className="flex items-center space-x-4">
