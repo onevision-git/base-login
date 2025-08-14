@@ -1,4 +1,3 @@
-// File: src/app/(app)/team/TeamInviteForm.tsx
 'use client';
 
 import React, { useState, FormEvent, useRef } from 'react';
@@ -33,11 +32,6 @@ export default function TeamInviteForm({
   const validateEmail = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
-  /**
-   * Check if a user exists.
-   * Returns true/false on success, or null when the check failed.
-   * IMPORTANT: While submitting, this should not toggle UI state.
-   */
   async function checkUserExists(
     value: string,
     updateState: boolean = true,
@@ -75,8 +69,7 @@ export default function TeamInviteForm({
       const existsValue = Boolean(data.exists);
       if (updateState && !submittingRef.current) setExists(existsValue);
       return existsValue;
-    } catch (err) {
-      console.error(err);
+    } catch {
       if (updateState && !submittingRef.current) {
         setEmailError('Unable to check email right now.');
       }
@@ -102,7 +95,6 @@ export default function TeamInviteForm({
       return;
     }
 
-    // Re-check existence as the source of truth (no mid-submit UI toggles)
     const existsNow = await checkUserExists(trimmed, false);
     if (existsNow === true) {
       setExists(true);
@@ -135,8 +127,7 @@ export default function TeamInviteForm({
       } else {
         setMessage(result.error || 'Failed to send invitation.');
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
       setMessage('An unexpected error occurred.');
     } finally {
       setLoading(false);
@@ -151,18 +142,16 @@ export default function TeamInviteForm({
       </p>
 
       {canInvite ? (
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          {/* Email field */}
-          <div>
-            <label
-              htmlFor="invite-email"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Email
+        <form onSubmit={handleSubmit} className="auth-form" noValidate>
+          {/* Email */}
+          <div className="form-control">
+            <label htmlFor="invite-email" className="label">
+              <span className="label-text">Email</span>
             </label>
             <input
               id="invite-email"
               type="email"
+              className="input input-bordered"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -174,59 +163,54 @@ export default function TeamInviteForm({
               required
               aria-invalid={Boolean(emailError) || exists === true}
               aria-describedby="invite-email-help"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
             />
             <p id="invite-email-help" className="mt-1 text-sm">
               {checking && <span className="text-gray-500">Checking…</span>}
               {!checking && exists === true && (
-                <span className="text-red-600">
+                <span className="text-error">
                   This email is already registered.
                 </span>
               )}
               {!checking && emailError && (
-                <span className="text-red-600">{emailError}</span>
+                <span className="text-error">{emailError}</span>
               )}
             </p>
           </div>
 
-          {/* Role selector */}
-          <div>
-            <label
-              htmlFor="invite-role"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Role
+          {/* Role */}
+          <div className="form-control mt-4">
+            <label htmlFor="invite-role" className="label">
+              <span className="label-text">Role</span>
             </label>
             <select
               id="invite-role"
+              className="select select-bordered"
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="standard">Standard</option>
               <option value="admin">Admin</option>
             </select>
           </div>
 
-          {/* Submit button */}
-          <button
-            type="submit"
-            onPointerDown={() => {
-              // fires before the input blur; prevents the blur-check from
-              // flipping state that could disable the button or cancel submit
-              submittingRef.current = true;
-            }}
-            disabled={
-              loading ||
-              /* removed `checking` to avoid race with blur check */
-              exists === true ||
-              Boolean(emailError) ||
-              !email.trim()
-            }
-            className="w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 disabled:opacity-60 hover:bg-blue-700 focus:outline-none"
-          >
-            {loading ? 'Sending…' : 'Send Invite'}
-          </button>
+          {/* Submit */}
+          <div className="form-control mt-6">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={
+                loading ||
+                exists === true ||
+                Boolean(emailError) ||
+                !email.trim()
+              }
+              onPointerDown={() => {
+                submittingRef.current = true;
+              }}
+            >
+              {loading ? 'Sending…' : 'Send Invite'}
+            </button>
+          </div>
         </form>
       ) : (
         <p className="text-sm text-gray-500">
@@ -237,7 +221,7 @@ export default function TeamInviteForm({
       )}
 
       {message && (
-        <p className="mt-4 text-center text-sm text-red-600">{message}</p>
+        <p className="mt-4 text-center text-sm text-error">{message}</p>
       )}
     </div>
   );

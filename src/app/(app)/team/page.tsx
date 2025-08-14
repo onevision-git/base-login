@@ -1,5 +1,4 @@
 // File: src/app/(app)/team/page.tsx
-
 export const dynamic = 'force-dynamic';
 
 import { cookies } from 'next/headers';
@@ -106,7 +105,6 @@ export default async function TeamPage() {
   }
 
   const companyObjectId = new mongoose.Types.ObjectId(payload.companyId);
-
   const inviteModel = Invite as unknown as mongoose.Model<InviteLean>;
 
   // 1) Load invites for this company
@@ -162,85 +160,99 @@ export default async function TeamPage() {
     };
   });
 
+  // === Visual only: match the centred card style used elsewhere ===
   return (
-    <main className="min-h-screen flex flex-col gap-6 p-4 bg-base-200">
-      <h1 className="text-3xl font-bold">Team Invites</h1>
-
-      <section className="rounded-lg border p-4 bg-white">
-        <TeamInviteForm
-          userCount={userCount}
-          maxUsers={maxUsers}
-          canInvite={canInvite}
-          // inviterDomain will be added after we update the form props in the next step
-          // inviterDomain={inviterDomain || ''}
-        />
-      </section>
-
-      <section className="rounded-lg border bg-white">
-        <div className="p-4">
-          <h2 className="text-lg font-semibold">Existing invites</h2>
-          <p className="text-sm text-gray-500">
-            Lists invited emails and status. Resend now calls the API and
-            refreshes the table.
+    <main className="px-4 py-10">
+      <section className="max-w-4xl mx-auto space-y-8">
+        {/* Title */}
+        <header className="text-center">
+          <h1 className="text-3xl font-bold">Team invites</h1>
+          <p className="text-base-content/70 mt-1">
+            Invite teammates and manage pending invites.
           </p>
+        </header>
+
+        {/* Invite form card */}
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <h2 className="card-title">Invite a teammate</h2>
+            <p className="text-sm opacity-70">
+              You’re using {userCount} of {maxUsers} seats.
+            </p>
+
+            <div className="mt-2">
+              <TeamInviteForm
+                userCount={userCount}
+                maxUsers={maxUsers}
+                canInvite={canInvite}
+                // inviterDomain will be added after we update the form props in a later step
+                // inviterDomain={inviterDomain || ''}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-left">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-600">Email</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Role</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Invited</th>
-                <th className="px-4 py-3 font-medium text-gray-600">
-                  Accepted
-                </th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {invites.map((inv) => {
-                const accepted = inv.status === 'ACCEPTED';
-                return (
-                  <tr key={inv.id} className="border-t">
-                    <td className="px-4 py-3">{inv.email}</td>
-                    <td className="px-4 py-3">{inv.role}</td>
-                    <td className="px-4 py-3">
-                      {accepted ? (
-                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
-                          Accepted
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{formatDate(inv.invitedAt)}</td>
-                    <td className="px-4 py-3">{formatDate(inv.acceptedAt)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <ResendInviteButton
-                        inviteId={inv.id}
-                        disabled={accepted}
-                      />
-                    </td>
+        {/* Invites table card */}
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <h2 className="card-title">Existing invites</h2>
+            <p className="text-sm opacity-70">
+              Lists invited emails and status. Resend sends a new 24h link and
+              updates “Invited” to now.
+            </p>
+
+            <div className="overflow-x-auto mt-4">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Invited</th>
+                    <th>Accepted</th>
+                    <th></th>
                   </tr>
-                );
-              })}
-              {invites.length === 0 && (
-                <tr>
-                  <td className="px-4 py-6 text-gray-500" colSpan={6}>
-                    No invites yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="p-3 text-xs text-gray-500 border-t">
-          Resend sends a new 24h link and bumps “Invited” to now.
+                </thead>
+                <tbody>
+                  {invites.map((inv) => {
+                    const accepted = inv.status === 'ACCEPTED';
+                    return (
+                      <tr key={inv.id}>
+                        <td>{inv.email}</td>
+                        <td>{inv.role}</td>
+                        <td>
+                          {accepted ? (
+                            <span className="badge badge-success badge-outline">
+                              Accepted
+                            </span>
+                          ) : (
+                            <span className="badge badge-warning badge-outline">
+                              Pending
+                            </span>
+                          )}
+                        </td>
+                        <td>{formatDate(inv.invitedAt)}</td>
+                        <td>{formatDate(inv.acceptedAt)}</td>
+                        <td className="text-right">
+                          <ResendInviteButton
+                            inviteId={inv.id}
+                            disabled={accepted}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {invites.length === 0 && (
+                    <tr>
+                      <td className="text-base-content/60" colSpan={6}>
+                        No invites yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
     </main>

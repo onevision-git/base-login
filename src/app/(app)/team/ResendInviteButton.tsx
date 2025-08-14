@@ -1,4 +1,3 @@
-// File: src/app/(app)/team/ResendInviteButton.tsx
 'use client';
 
 import * as React from 'react';
@@ -44,7 +43,6 @@ export default function ResendInviteButton({ inviteId, disabled }: Props) {
       setErr('Unexpected error.');
     } finally {
       setLoading(false);
-      // Clear success badge after a short moment
       setTimeout(() => setOk(false), 2000);
     }
   };
@@ -56,8 +54,8 @@ export default function ResendInviteButton({ inviteId, disabled }: Props) {
         onClick={onClick}
         disabled={disabled || loading}
         title={disabled ? 'Invite already accepted' : 'Resend invite email'}
-        className={`rounded-md px-3 py-1.5 text-sm border transition ${
-          disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-50'
+        className={`btn btn-sm btn-outline ${
+          disabled ? 'opacity-40 cursor-not-allowed' : ''
         }`}
       >
         {loading ? 'Resending…' : 'Resend'}
