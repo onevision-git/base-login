@@ -3,6 +3,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import AuthLayout from '../_components/AuthLayout';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -148,92 +149,80 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">Welcome back</h1>
+    <AuthLayout
+      title="Welcome back"
+      footerNote="By continuing you agree to our Terms & Privacy Policy."
+      belowCard={
+        <div className="flex items-center justify-between text-sm">
+          <a className="link link-hover" href="/signup">
+            Create an account
+          </a>
+
+          <button
+            type="button"
+            className="link link-hover text-left"
+            onClick={openForgotDialog}
+            aria-haspopup="dialog"
+            aria-controls="forgot-password-dialog"
+          >
+            Forgot password?
+          </button>
+        </div>
+      }
+    >
+      <form onSubmit={onSubmit} noValidate className="auth-form">
+        {/* Email */}
+        <div className="form-control">
+          <label htmlFor="email" className="label">
+            <span className="label-text">Email</span>
+          </label>
+          <input
+            id="email"
+            type="email"
+            className="input input-bordered"
+            placeholder="you@company.com"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
 
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body">
-            <form onSubmit={onSubmit} noValidate>
-              {/* Email */}
-              <div className="form-control">
-                <label htmlFor="email" className="label">
-                  <span className="label-text">Email</span>
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  className="input input-bordered"
-                  placeholder="you@company.com"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
+        {/* Password */}
+        <div className="form-control mt-4">
+          <label htmlFor="password" className="label">
+            <span className="label-text">Password</span>
+          </label>
+          <input
+            id="password"
+            type="password"
+            className="input input-bordered"
+            placeholder="••••••••"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
 
-              {/* Password */}
-              <div className="form-control mt-4">
-                <label htmlFor="password" className="label">
-                  <span className="label-text">Password</span>
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  className="input input-bordered"
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Error */}
-              {error ? (
-                <div role="alert" className="alert alert-error mt-4">
-                  <span>{error}</span>
-                </div>
-              ) : null}
-
-              {/* Submit */}
-              <div className="form-control mt-6">
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={submitting}
-                >
-                  {submitting ? 'Signing in…' : 'Sign in'}
-                </button>
-              </div>
-            </form>
-
-            {/* Links */}
-            <div className="mt-6 flex items-center justify-between text-sm">
-              <a className="link link-hover" href="/signup">
-                Create an account
-              </a>
-
-              <button
-                type="button"
-                className="link link-hover text-left"
-                onClick={openForgotDialog}
-                aria-haspopup="dialog"
-                aria-controls="forgot-password-dialog"
-              >
-                Forgot password?
-              </button>
-            </div>
+        {/* Error */}
+        {error ? (
+          <div role="alert" className="alert alert-error mt-4">
+            <span>{error}</span>
           </div>
-        </div>
+        ) : null}
 
-        {/* Small print / footer note (optional) */}
-        <p className="text-center text-xs opacity-60 mt-6">
-          By continuing you agree to our Terms &amp; Privacy Policy.
-        </p>
-      </div>
+        {/* Submit */}
+        <div className="form-control mt-6">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={submitting}
+          >
+            {submitting ? 'Signing in…' : 'Sign in'}
+          </button>
+        </div>
+      </form>
 
       {/* Forgot Password Modal */}
       <dialog
@@ -305,6 +294,6 @@ export default function LoginPage() {
           <button aria-label="Close dialog">close</button>
         </form>
       </dialog>
-    </main>
+    </AuthLayout>
   );
 }
