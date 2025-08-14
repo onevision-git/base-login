@@ -1,8 +1,10 @@
+// src/app/(public)/accept-invite/page.tsx
 'use client';
 
 import { Suspense, useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import AuthLayout from '../_components/AuthLayout';
 
 export default function AcceptInvitePage() {
   return (
@@ -23,17 +25,26 @@ function AcceptInviteContent() {
 
   if (!token) {
     return (
-      <main className="mx-auto max-w-md p-6">
-        <h1 className="text-2xl font-semibold mb-4">Invalid invite link</h1>
-        <p className="mb-4">This invite link is missing a token.</p>
-        <p className="text-sm text-gray-600">
-          Ask your admin to send a new invite, or{' '}
-          <Link href="/login" className="underline">
-            go to login
-          </Link>
-          .
-        </p>
-      </main>
+      <AuthLayout
+        title="Invalid invite link"
+        subtitle={
+          <>
+            This invite link is missing a token.
+            <br />
+            Ask your admin to send a new invite.
+          </>
+        }
+        belowCard={
+          <div className="text-sm">
+            <Link href="/login" className="link link-hover">
+              Go to login
+            </Link>
+          </div>
+        }
+      >
+        {/* Empty children: we only show the message above */}
+        <div />
+      </AuthLayout>
     );
   }
 
@@ -88,18 +99,27 @@ function AcceptInviteContent() {
   const passwordsMismatch = confirm.length > 0 && password !== confirm;
 
   return (
-    <main className="mx-auto max-w-md p-6">
-      <h1 className="text-2xl font-semibold mb-2">Accept your invite</h1>
-      <p className="text-sm text-gray-600 mb-6">
-        Set a password to finish creating your account.
-      </p>
-
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+    <AuthLayout
+      title="Accept your invite"
+      subtitle="Set a password to finish creating your account."
+      belowCard={
+        <p className="text-sm">
+          Already have an account?{' '}
+          <Link href="/login" className="link link-hover">
+            Log in
+          </Link>
+          .
+        </p>
+      }
+      footerNote="By continuing you agree to our Terms & Privacy Policy."
+    >
+      <form onSubmit={onSubmit} noValidate className="auth-form">
         <input type="hidden" name="token" value={token} />
 
-        <div className="space-y-2">
-          <label htmlFor="password" className="block text-sm font-medium">
-            Password
+        {/* Password */}
+        <div className="form-control">
+          <label htmlFor="password" className="label">
+            <span className="label-text">Password</span>
           </label>
           <input
             id="password"
@@ -107,19 +127,20 @@ function AcceptInviteContent() {
             type="password"
             required
             minLength={8}
-            className="w-full rounded-md border px-3 py-2"
+            className="input input-bordered"
             placeholder="Create a strong password"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={!!error && password.length < 8}
           />
-          <p className="text-xs text-gray-500">Minimum 8 characters.</p>
+          <p className="text-xs opacity-70 mt-1">Minimum 8 characters.</p>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="confirm" className="block text-sm font-medium">
-            Confirm password
+        {/* Confirm Password */}
+        <div className="form-control mt-4">
+          <label htmlFor="confirm" className="label">
+            <span className="label-text">Confirm password</span>
           </label>
           <input
             id="confirm"
@@ -127,9 +148,7 @@ function AcceptInviteContent() {
             type="password"
             required
             minLength={8}
-            className={`w-full rounded-md border px-3 py-2 ${
-              passwordsMismatch ? 'border-red-500' : ''
-            }`}
+            className={`input input-bordered ${passwordsMismatch ? 'input-error' : ''}`}
             placeholder="Re-enter your password"
             autoComplete="new-password"
             value={confirm}
@@ -138,38 +157,30 @@ function AcceptInviteContent() {
             aria-describedby={passwordsMismatch ? 'mismatch-help' : undefined}
           />
           {passwordsMismatch && (
-            <p id="mismatch-help" className="text-sm text-red-600">
+            <p id="mismatch-help" className="text-sm text-error mt-1">
               Passwords do not match.
             </p>
           )}
         </div>
 
+        {/* Error */}
         {error && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700"
-          >
-            {error}
+          <div role="alert" className="alert alert-error mt-4">
+            <span>{error}</span>
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="inline-flex items-center rounded-md bg-black px-4 py-2 text-white font-medium disabled:opacity-60"
-        >
-          {submitting ? 'Creating…' : 'Create account'}
-        </button>
-
-        <p className="mt-3 text-xs text-gray-500">
-          Already have an account?{' '}
-          <Link href="/login" className="underline">
-            Log in
-          </Link>
-          .
-        </p>
+        {/* Submit */}
+        <div className="form-control mt-6">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={submitting}
+          >
+            {submitting ? 'Creating…' : 'Create account'}
+          </button>
+        </div>
       </form>
-    </main>
+    </AuthLayout>
   );
 }

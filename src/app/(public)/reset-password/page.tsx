@@ -1,8 +1,10 @@
+// src/app/(public)/reset-password/page.tsx
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import AuthLayout from '../_components/AuthLayout';
 
 type ReqState = 'idle' | 'submitting' | 'success' | 'error';
 type CfmState = 'idle' | 'submitting' | 'success' | 'error';
@@ -67,65 +69,62 @@ function RequestForm() {
   const disabled = state === 'submitting';
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-base-200 p-4">
-      <div className="card w-full max-w-md bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h1 className="card-title text-2xl">Forgot your password?</h1>
-          <p className="text-sm opacity-80">
-            Enter your email address and we’ll send you a link to reset your
-            password.
-          </p>
-
-          <form onSubmit={onSubmit} className="form-control gap-4 mt-4">
-            <label className="form-control">
-              <span className="label-text">Email address</span>
-              <input
-                type="email"
-                autoFocus
-                required
-                autoComplete="email"
-                className="input input-bordered"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={disabled}
-              />
-            </label>
-
-            <button
-              type="submit"
-              className={`btn btn-primary ${disabled ? 'loading' : ''}`}
-              disabled={disabled}
-              aria-disabled={disabled}
-            >
-              {state === 'submitting' ? 'Sending…' : 'Send reset link'}
-            </button>
-          </form>
-
-          {message && (
-            <div
-              role="status"
-              className={`alert mt-4 ${
-                state === 'success' ? 'alert-success' : 'alert-error'
-              }`}
-            >
-              <span>{message}</span>
-            </div>
-          )}
-
-          <div className="divider" />
-
-          <div className="flex items-center justify-between text-sm">
-            <Link href="/(public)/login" className="link link-hover">
-              Back to login
-            </Link>
-            <Link href="/(public)/signup" className="link link-hover">
-              Create an account
-            </Link>
-          </div>
+    <AuthLayout
+      title="Forgot your password?"
+      subtitle="Enter your email address and we’ll send you a link to reset your password."
+      belowCard={
+        <div className="flex items-center justify-between text-sm">
+          <Link href="/login" className="link link-hover">
+            Back to login
+          </Link>
+          <Link href="/signup" className="link link-hover">
+            Create an account
+          </Link>
         </div>
-      </div>
-    </main>
+      }
+    >
+      <form onSubmit={onSubmit} className="auth-form" noValidate>
+        <div className="form-control">
+          <label htmlFor="email" className="label">
+            <span className="label-text">Email address</span>
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoFocus
+            required
+            autoComplete="email"
+            className="input input-bordered"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={disabled}
+          />
+        </div>
+
+        <div className="form-control mt-6">
+          <button
+            type="submit"
+            className={`btn btn-primary ${disabled ? 'loading' : ''}`}
+            disabled={disabled}
+            aria-disabled={disabled}
+          >
+            {state === 'submitting' ? 'Sending…' : 'Send reset link'}
+          </button>
+        </div>
+
+        {message && (
+          <div
+            role="status"
+            className={`alert mt-4 ${
+              state === 'success' ? 'alert-success' : 'alert-error'
+            }`}
+          >
+            <span>{message}</span>
+          </div>
+        )}
+      </form>
+    </AuthLayout>
   );
 }
 
@@ -177,79 +176,73 @@ function ConfirmForm({ token }: { token: string }) {
   const disabled = state === 'submitting';
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-base-200 p-4">
-      <div className="card w-full max-w-md bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h1 className="card-title text-2xl">Set a new password</h1>
-          <p className="text-sm opacity-80">
-            Enter a new password for your account. Password must be at least 8
-            characters.
-          </p>
-
-          <form onSubmit={onSubmit} className="form-control gap-4 mt-4">
-            <label className="form-control">
-              <span className="label-text">New password</span>
-              <input
-                type="password"
-                required
-                autoComplete="new-password"
-                className={`input input-bordered ${
-                  tooShort ? 'input-error' : ''
-                }`}
-                placeholder="********"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                disabled={disabled}
-              />
-            </label>
-
-            {tooShort && (
-              <p className="text-error text-sm">
-                Password must be at least 8 characters.
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className={`btn btn-primary ${disabled ? 'loading' : ''}`}
-              disabled={disabled || tooShort}
-              aria-disabled={disabled || tooShort}
-            >
-              {state === 'submitting' ? 'Updating…' : 'Update password'}
-            </button>
-          </form>
-
-          {message && (
-            <div
-              role="status"
-              className={`alert mt-4 ${
-                state === 'success' ? 'alert-success' : 'alert-error'
-              }`}
-            >
-              <span>{message}</span>
-            </div>
+    <AuthLayout
+      title="Set a new password"
+      subtitle="Enter a new password for your account. Password must be at least 8 characters."
+      belowCard={
+        <div className="flex items-center justify-between text-sm">
+          <Link href="/login" className="link link-hover">
+            Back to login
+          </Link>
+          <Link href="/signup" className="link link-hover">
+            Create an account
+          </Link>
+        </div>
+      }
+    >
+      <form onSubmit={onSubmit} className="auth-form" noValidate>
+        <div className="form-control">
+          <label htmlFor="new-password" className="label">
+            <span className="label-text">New password</span>
+          </label>
+          <input
+            id="new-password"
+            type="password"
+            required
+            autoComplete="new-password"
+            className={`input input-bordered ${tooShort ? 'input-error' : ''}`}
+            placeholder="********"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            disabled={disabled}
+          />
+          {tooShort && (
+            <p className="text-error text-sm mt-1">
+              Password must be at least 8 characters.
+            </p>
           )}
+        </div>
 
-          {state === 'success' && (
-            <div className="mt-2">
-              <Link href="/login" className="btn btn-link px-0">
-                Go to login
-              </Link>
-            </div>
-          )}
+        <div className="form-control mt-6">
+          <button
+            type="submit"
+            className={`btn btn-primary ${disabled ? 'loading' : ''}`}
+            disabled={disabled || tooShort}
+            aria-disabled={disabled || tooShort}
+          >
+            {state === 'submitting' ? 'Updating…' : 'Update password'}
+          </button>
+        </div>
 
-          <div className="divider" />
+        {message && (
+          <div
+            role="status"
+            className={`alert mt-4 ${
+              state === 'success' ? 'alert-success' : 'alert-error'
+            }`}
+          >
+            <span>{message}</span>
+          </div>
+        )}
 
-          <div className="flex items-center justify-between text-sm">
-            <Link href="/login" className="link link-hover">
-              Back to login
-            </Link>
-            <Link href="/signup" className="link link-hover">
-              Create an account
+        {state === 'success' && (
+          <div className="mt-2">
+            <Link href="/login" className="btn btn-link px-0">
+              Go to login
             </Link>
           </div>
-        </div>
-      </div>
-    </main>
+        )}
+      </form>
+    </AuthLayout>
   );
 }

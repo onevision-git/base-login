@@ -1,7 +1,10 @@
+// src/app/(public)/confirm/page.tsx
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import AuthLayout from '../_components/AuthLayout';
 
 type Status =
   | { state: 'idle' | 'loading' }
@@ -10,7 +13,7 @@ type Status =
 
 export default function ConfirmPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading…</div>}>
       <ConfirmContent />
     </Suspense>
   );
@@ -54,7 +57,7 @@ function ConfirmContent() {
           message: data?.message || 'Email confirmed successfully.',
         });
 
-        // Redirect straight to /login after a short pause
+        // Redirect to /login after a short pause
         setTimeout(() => router.push('/login'), 1200);
       } catch (err) {
         console.error('Confirm page error:', err);
@@ -69,43 +72,52 @@ function ConfirmContent() {
   }, [router, searchParams]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl shadow-lg p-6 border">
-        <h1 className="text-2xl font-semibold mb-2">Confirming your email…</h1>
+    <AuthLayout
+      title="Confirming your email…"
+      belowCard={
+        <div className="text-sm">
+          <Link className="link link-hover" href="/login">
+            Go to login
+          </Link>
+        </div>
+      }
+    >
+      {/* Status blocks in a unified card body */}
+      {(status.state === 'idle' || status.state === 'loading') && (
+        <div role="status" className="alert alert-info">
+          <span>Please wait a moment…</span>
+        </div>
+      )}
 
-        {status.state === 'idle' || status.state === 'loading' ? (
-          <p className="text-gray-600">Please wait a moment…</p>
-        ) : null}
+      {status.state === 'success' && (
+        <>
+          <div role="status" className="alert alert-success">
+            <span>{status.message}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary mt-4 w-full"
+            onClick={() => router.push('/login')}
+          >
+            Go to login now
+          </button>
+        </>
+      )}
 
-        {status.state === 'success' ? (
-          <>
-            <p className="text-green-700">{status.message}</p>
-            <p className="mt-2 text-gray-600">
-              Redirecting you to the login page…
-            </p>
-            <button
-              type="button"
-              className="btn btn-primary mt-4"
-              onClick={() => router.push('/login')}
-            >
-              Go to login now
-            </button>
-          </>
-        ) : null}
-
-        {status.state === 'error' ? (
-          <>
-            <p className="text-red-700">{status.message}</p>
-            <button
-              type="button"
-              className="btn btn-primary mt-4"
-              onClick={() => router.refresh()}
-            >
-              Try again
-            </button>
-          </>
-        ) : null}
-      </div>
-    </main>
+      {status.state === 'error' && (
+        <>
+          <div role="alert" className="alert alert-error">
+            <span>{status.message}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary mt-4 w-full"
+            onClick={() => router.refresh()}
+          >
+            Try again
+          </button>
+        </>
+      )}
+    </AuthLayout>
   );
 }
