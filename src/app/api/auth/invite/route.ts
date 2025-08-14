@@ -5,12 +5,8 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
-import { getInviteInfo } from '../../../../../packages/auth/src/service';
-import { sendMagicLink } from '../../../../../packages/auth/src/email';
-
-import { connect } from '@/lib/db';
-import User from '@/models/User';
-import Invite from '@/models/Invite';
+// ⚠️ Anything that might touch env vars (db/auth/email/models)
+// is imported inside the POST handler via dynamic import().
 
 function bad(status: number, error: string) {
   return NextResponse.json({ error }, { status });
@@ -34,7 +30,10 @@ type InviteDocShape = mongoose.Document & {
   acceptedAt: Date | null;
   role?: 'admin' | 'standard';
 };
-const InviteModel = Invite as unknown as mongoose.Model<InviteDocShape>;
+
+type UserDocShape = mongoose.Document & {
+  email: string;
+};
 
 type InviteRequestBody = {
   email?: string;
@@ -42,11 +41,12 @@ type InviteRequestBody = {
 };
 
 export async function POST(req: Request) {
-  // Load env at runtime (prevents Next build-time crashes)
+  // 0) Runtime env reads (safe for build)
   const JWT_SECRET = process.env.JWT_SECRET;
   const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
   if (!JWT_SECRET || !APP_URL) {
-    throw new Error(
+    return bad(
+      500,
       'Missing required environment variables: JWT_SECRET, NEXT_PUBLIC_APP_URL',
     );
   }
@@ -63,11 +63,30 @@ export async function POST(req: Request) {
     return bad(401, 'Unauthorized');
   }
 
-  // 2) Authorisation / seat limit
+  // 2) Lazy-load modules that may read env at import time
+  const [
+    { getInviteInfo },
+    { sendMagicLink },
+    { connect },
+    { default: User },
+    { default: Invite },
+  ] = await Promise.all([
+    import('../../../../../packages/auth/src/service'),
+    import('../../../../../packages/auth/src/email'),
+    import('@/lib/db'),
+    import('@/models/User'),
+    import('@/models/Invite'),
+  ]);
+
+  // Cast after dynamic import to keep types local to runtime
+  const InviteModel = Invite as unknown as mongoose.Model<InviteDocShape>;
+  const UserModel = User as unknown as mongoose.Model<UserDocShape>;
+
+  // 3) Authorisation / seat limit
   const { canInvite } = await getInviteInfo(payload.companyId, payload.userId);
   if (!canInvite) return bad(403, 'Forbidden');
 
-  // 3) Parse body
+  // 4) Parse body
   let body: unknown;
   try {
     body = await req.json();
@@ -87,18 +106,18 @@ export async function POST(req: Request) {
   const inviteeEmail = email.trim();
   const inviterEmail = payload.email;
 
-  // 4) Domain policy — invitee must share inviter's domain
+  // 5) Domain policy — invitee must share inviter's domain
   const inviterDomain = domainOf(inviterEmail);
   const inviteeDomain = domainOf(inviteeEmail);
   if (!inviterDomain || inviterDomain !== inviteeDomain) {
     return bad(400, 'Email domain must match your company domain.');
   }
 
-  // 5) Prevent inviting an already registered user (case-insensitive)
+  // 6) Prevent inviting an already registered user (case-insensitive)
   try {
     await connect();
 
-    const exists = await User.exists({
+    const exists = await UserModel.exists({
       email: { $regex: `^${escapeRegex(inviteeEmail)}$`, $options: 'i' },
     });
     if (exists) return bad(409, 'This email is already registered.');
@@ -107,7 +126,7 @@ export async function POST(req: Request) {
     return bad(500, 'Failed to validate invite.');
   }
 
-  // 6) Generate invite token & send email
+  // 7) Generate invite token & send email
   try {
     const inviteToken = jwt.sign(
       {
@@ -120,10 +139,12 @@ export async function POST(req: Request) {
       { expiresIn: '24h' },
     );
 
-    const inviteLink = `${APP_URL.replace(/\/$/, '')}/accept-invite?token=${encodeURIComponent(inviteToken)}`;
+    const inviteLink = `${APP_URL.replace(/\/$/, '')}/accept-invite?token=${encodeURIComponent(
+      inviteToken,
+    )}`;
     await sendMagicLink(inviteeEmail, inviteLink);
 
-    // 7) Persist the invite so /team can list it
+    // 8) Persist the invite so /team can list it
     try {
       await InviteModel.create({
         companyId: new mongoose.Types.ObjectId(payload.companyId),

@@ -4,17 +4,23 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import Company from '@models/Company';
 import User from '@models/User';
-import { sendMagicLink } from './email';
 
-// Validate and load environment variables
-const MONGODB_URI = process.env.MONGODB_URI!;
-const JWT_SECRET = process.env.JWT_SECRET!;
-const NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
+// ⚠️ Build-safety:
+// - No top-level env reads or throws.
+// - Lazy-import email helper to avoid import-time env access.
 
-if (!MONGODB_URI || !JWT_SECRET || !NEXT_PUBLIC_APP_URL) {
-  throw new Error(
-    'Missing required environment variables: MONGODB_URI, JWT_SECRET, NEXT_PUBLIC_APP_URL',
-  );
+function requireEnv(
+  name: 'MONGODB_URI' | 'JWT_SECRET' | 'NEXT_PUBLIC_APP_URL',
+): string {
+  const val = process.env[name];
+  if (!val || !val.trim()) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return val.trim();
+}
+
+function appUrlNoTrailingSlash(url: string): string {
+  return url.replace(/\/$/, '');
 }
 
 /**
@@ -25,11 +31,18 @@ export async function createUserAndCompany(
   orgName: string,
   email: string,
 ): Promise<{ success: boolean; magicLink: string }> {
-  // 1. Connect to MongoDB
+  // 1) Load env at runtime (safe for build)
+  const MONGODB_URI = requireEnv('MONGODB_URI');
+  const JWT_SECRET = requireEnv('JWT_SECRET');
+  const NEXT_PUBLIC_APP_URL = requireEnv('NEXT_PUBLIC_APP_URL');
+
+  // 2) Connect to MongoDB (idempotent in mongoose)
   await mongoose.connect(MONGODB_URI);
 
-  // 2. Lookup or create the company based on email domain
-  const domain = email.split('@')[1];
+  // 3) Lookup or create the company based on email domain
+  const domain = (email.split('@')[1] ?? '').toLowerCase();
+  if (!domain) throw new Error('Invalid email domain');
+
   let company = await Company.findOne({ domain });
   if (!company) {
     company = await Company.create({
@@ -39,13 +52,13 @@ export async function createUserAndCompany(
     });
   }
 
-  // 3. Prevent duplicate users
+  // 4) Prevent duplicate users
   const existing = await User.findOne({ email });
   if (existing) {
     throw new Error('User already exists');
   }
 
-  // 4. Create the master/admin user
+  // 5) Create the master/admin user
   const user = await User.create({
     email,
     companyId: company._id,
@@ -55,15 +68,18 @@ export async function createUserAndCompany(
     passwordHash: 'placeholder',
   });
 
-  // 5. Generate a JWT magic link
+  // 6) Generate a JWT magic link
   const token = jwt.sign(
     { email: user.email, userId: user._id.toString() },
     JWT_SECRET,
     { expiresIn: '24h' },
   );
-  const magicLink = `${NEXT_PUBLIC_APP_URL}/confirm?token=${token}`;
+  const magicLink = `${appUrlNoTrailingSlash(NEXT_PUBLIC_APP_URL)}/confirm?token=${encodeURIComponent(
+    token,
+  )}`;
 
-  // 6. Send via your email helper
+  // 7) Lazy-import the email helper and send
+  const { sendMagicLink } = await import('./email');
   await sendMagicLink(email, magicLink);
 
   return { success: true, magicLink };
@@ -77,6 +93,9 @@ export async function getInviteInfo(
   companyId: string,
   userId: string,
 ): Promise<{ userCount: number; maxUsers: number; canInvite: boolean }> {
+  // Load env at runtime (safe for build)
+  const MONGODB_URI = requireEnv('MONGODB_URI');
+
   // Ensure DB connection
   await mongoose.connect(MONGODB_URI);
 

@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - '**'          # run CI on all branches
+      - '**' # run CI on all branches
   pull_request:
     branches:
       - main
@@ -15,7 +15,7 @@ jobs:
     env:
       CI: true
       NEXT_TELEMETRY_DISABLED: '1'
-      HUSKY: '0' 
+      HUSKY: '0'
       # Secrets required by build (lazy-read at runtime too, but present here keeps SSR/imports happy)
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
