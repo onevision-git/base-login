@@ -1,12 +1,15 @@
 // src/components/DashboardFooter.tsx
+'use client';
+
+import BaseFooter from './BaseFooter';
 
 export default function DashboardFooter() {
   return (
-    <footer className="bg-base-300 text-center py-4 mt-auto">
-      <p className="text-xs text-base-content/70">
-        &copy; {new Date().getFullYear()} Base Login – LoggedIn. All rights
-        reserved.
-      </p>
-    </footer>
+    <BaseFooter
+      variant="dashboard"
+      owner="Base Login"
+      note="All rights reserved."
+      // links={[ { href: '/dashboard/settings', label: 'Settings' } ]}
+    />
   );
 }
