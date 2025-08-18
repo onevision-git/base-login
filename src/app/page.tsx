@@ -1,114 +1,117 @@
-import Image from 'next/image';
-export default function Home() {
+// src/app/page.tsx
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import Breadcrumbs from '../components/Breadcrumbs';
+import Link from 'next/link';
+
+export default function HomePage() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      {' '}
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        {' '}
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />{' '}
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          {' '}
-          <li className="mb-2 tracking-[-.01em]">
-            {' '}
-            Get started by editing{' '}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              {' '}
-              src/app/page.tsx{' '}
-            </code>{' '}
-            .{' '}
-          </li>{' '}
-          <li className="tracking-[-.01em]">
-            {' '}
-            Save and see your changes instantly.{' '}
-          </li>{' '}
-        </ol>{' '}
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          {' '}
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {' '}
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />{' '}
-            Deploy now{' '}
-          </a>{' '}
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {' '}
-            Read our docs{' '}
-          </a>{' '}
-        </div>{' '}
-      </main>{' '}
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        {' '}
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {' '}
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />{' '}
-          Learn{' '}
-        </a>{' '}
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {' '}
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />{' '}
-          Examples{' '}
-        </a>{' '}
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {' '}
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />{' '}
-          Go to nextjs.org â†’{' '}
-        </a>{' '}
-      </footer>{' '}
+    <div className="min-h-dvh flex flex-col">
+      {/* Global header */}
+      <Header />
+
+      {/* Breadcrumbs under header */}
+      <Breadcrumbs />
+
+      {/* Main content */}
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="bg-base-100">
+          <div className="container mx-auto px-4 py-16">
+            <div className="grid md:grid-cols-2 items-center gap-8">
+              <div>
+                <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
+                  Ship SaaS faster with{' '}
+                  <span className="text-primary">Base Login</span>
+                </h1>
+                <p className="mt-4 text-base-content/70 text-lg">
+                  A reusable authentication starter with multi-tenancy, invites,
+                  and ready-to-go UI. Focus on your product — not boilerplate.
+                </p>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href="/signup" className="btn btn-primary">
+                    Get started
+                  </Link>
+                  <Link href="/login" className="btn btn-ghost">
+                    I already have an account
+                  </Link>
+                </div>
+
+                {/* Quick highlights */}
+                <ul className="mt-6 grid sm:grid-cols-2 gap-3 text-sm">
+                  <li className="flex items-center gap-2">
+                    <span className="badge badge-primary badge-sm" />
+                    Multi-tenant by default
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="badge badge-primary badge-sm" />
+                    Email/password + magic link confirm
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="badge badge-primary badge-sm" />
+                    Team invites & roles
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="badge badge-primary badge-sm" />
+                    Tailwind + daisyUI styling
+                  </li>
+                </ul>
+              </div>
+
+              {/* Placeholder visual */}
+              <div className="hidden md:block">
+                <div className="mockup-window border bg-base-200">
+                  <div className="px-6 py-8 bg-base-100">
+                    <div className="skeleton h-6 w-2/3 mb-4" />
+                    <div className="skeleton h-4 w-full mb-2" />
+                    <div className="skeleton h-4 w-5/6 mb-2" />
+                    <div className="skeleton h-4 w-4/6" />
+                    <div className="mt-6 flex gap-2">
+                      <div className="skeleton h-10 w-24" />
+                      <div className="skeleton h-10 w-32" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature cards */}
+            <div className="mt-16 grid md:grid-cols-3 gap-6">
+              <div className="card bg-base-200 shadow">
+                <div className="card-body">
+                  <h3 className="card-title">Authentication</h3>
+                  <p>
+                    Email/password sign-up & sign-in, confirmation flow, and
+                    secure cookies built-in.
+                  </p>
+                </div>
+              </div>
+              <div className="card bg-base-200 shadow">
+                <div className="card-body">
+                  <h3 className="card-title">Multi-tenancy</h3>
+                  <p>
+                    Company-scoped data and invite-based team growth with
+                    per-seat limits.
+                  </p>
+                </div>
+              </div>
+              <div className="card bg-base-200 shadow">
+                <div className="card-body">
+                  <h3 className="card-title">UI Kit</h3>
+                  <p>
+                    Tailwind + daisyUI components with consistent headers,
+                    footers, and breadcrumbs.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Global footer */}
+      <Footer />
     </div>
   );
 }
