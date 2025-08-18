@@ -170,16 +170,20 @@ export default function LoginPage() {
         </div>
       }
     >
-      <form onSubmit={onSubmit} noValidate className="auth-form">
+      {/* Spacing fixes to match Signup:
+          - space-y-4 on the form for consistent vertical gaps
+          - label with py-0 mb-1 for tight label→input spacing
+          - inputs set to w-full for alignment */}
+      <form onSubmit={onSubmit} noValidate className="auth-form space-y-4">
         {/* Email */}
         <div className="form-control">
-          <label htmlFor="email" className="label">
+          <label htmlFor="email" className="label py-0 mb-1">
             <span className="label-text">Email</span>
           </label>
           <input
             id="email"
             type="email"
-            className="input input-bordered"
+            className="input input-bordered w-full"
             placeholder="you@company.com"
             autoComplete="email"
             value={email}
@@ -189,14 +193,14 @@ export default function LoginPage() {
         </div>
 
         {/* Password */}
-        <div className="form-control mt-4">
-          <label htmlFor="password" className="label">
+        <div className="form-control">
+          <label htmlFor="password" className="label py-0 mb-1">
             <span className="label-text">Password</span>
           </label>
           <input
             id="password"
             type="password"
-            className="input input-bordered"
+            className="input input-bordered w-full"
             placeholder="••••••••"
             autoComplete="current-password"
             value={password}
@@ -207,16 +211,16 @@ export default function LoginPage() {
 
         {/* Error */}
         {error ? (
-          <div role="alert" className="alert alert-error mt-4">
+          <div role="alert" className="alert alert-error">
             <span>{error}</span>
           </div>
         ) : null}
 
         {/* Submit */}
-        <div className="form-control mt-6">
+        <div className="form-control">
           <button
             type="submit"
-            className="btn btn-primary"
+            className="btn btn-primary w-full"
             disabled={submitting}
           >
             {submitting ? 'Signing in…' : 'Sign in'}
@@ -237,7 +241,7 @@ export default function LoginPage() {
           </h2>
 
           <form className="mt-2 space-y-3" onSubmit={onForgotSubmit} noValidate>
-            <label htmlFor="fp-email" className="label">
+            <label htmlFor="fp-email" className="label py-0 mb-1">
               <span className="label-text">Email</span>
             </label>
             <input

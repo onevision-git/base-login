@@ -58,10 +58,16 @@ export default function SignupPage() {
         </div>
       }
     >
-      <form onSubmit={handleSignup} noValidate className="auth-form">
+      {/* 
+        Spacing fixes:
+        - Use space-y-4 on the form to create consistent vertical rhythm.
+        - Use label with py-0 and mb-1 to keep a small, consistent gap.
+        - Ensure inputs are full width (w-full).
+      */}
+      <form onSubmit={handleSignup} noValidate className="auth-form space-y-4">
         {/* Org Name */}
         <div className="form-control">
-          <label htmlFor="orgName" className="label">
+          <label htmlFor="orgName" className="label py-0 mb-1">
             <span className="label-text">Organisation name</span>
           </label>
           <input
@@ -69,15 +75,16 @@ export default function SignupPage() {
             type="text"
             required
             placeholder="Company"
-            className="input input-bordered"
+            className="input input-bordered w-full"
             value={orgName}
             onChange={(e) => setOrgName(e.target.value)}
+            autoComplete="organization"
           />
         </div>
 
         {/* Email */}
-        <div className="form-control mt-4">
-          <label htmlFor="email" className="label">
+        <div className="form-control">
+          <label htmlFor="email" className="label py-0 mb-1">
             <span className="label-text">Email</span>
           </label>
           <input
@@ -86,15 +93,15 @@ export default function SignupPage() {
             required
             placeholder="you@company.com"
             autoComplete="email"
-            className="input input-bordered"
+            className="input input-bordered w-full"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
         {/* Password */}
-        <div className="form-control mt-4">
-          <label htmlFor="password" className="label">
+        <div className="form-control">
+          <label htmlFor="password" className="label py-0 mb-1">
             <span className="label-text">Password</span>
           </label>
           <input
@@ -103,7 +110,7 @@ export default function SignupPage() {
             required
             placeholder="••••••••"
             autoComplete="new-password"
-            className="input input-bordered"
+            className="input input-bordered w-full"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -113,14 +120,14 @@ export default function SignupPage() {
         {message ? (
           <div
             role="alert"
-            className={`alert ${isError ? 'alert-error' : 'alert-info'} mt-4`}
+            className={`alert ${isError ? 'alert-error' : 'alert-info'} mt-2`}
           >
             <span>{message}</span>
           </div>
         ) : null}
 
         {/* Submit */}
-        <div className="form-control mt-6">
+        <div className="form-control">
           <button
             type="submit"
             className="btn btn-primary w-full"
