@@ -1,4 +1,4 @@
-/** @type {import('tailwindcss').Config} */
+/** @type {import("tailwindcss").Config} */
 module.exports = {
   content: [
     './src/**/*.{js,jsx,ts,tsx,mdx}',
@@ -8,7 +8,6 @@ module.exports = {
     './src/styles/**/*.{css}',
   ],
   safelist: ['text-gray-900', 'bg-white'],
-  theme: {
-    extend: {},
-  },
+  theme: { extend: {} },
+  // No JS plugin/config for daisyUI in v5 — it's handled in CSS.
 };

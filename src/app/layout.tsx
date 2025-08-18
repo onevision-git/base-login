@@ -26,7 +26,7 @@ type RootLayoutProps = { children: React.ReactNode };
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="app">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-base-100 text-base-content`}
       >

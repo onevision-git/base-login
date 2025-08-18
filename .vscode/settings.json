@@ -1,4 +1,15 @@
 {
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "css.validate": false,                // stop false errors like "Unknown at rule @apply"
+  "scss.validate": false,
+  "less.validate": false,
+  "files.associations": {
+    "*.css": "postcss"                  // treat CSS as PostCSS so @layer/@apply are recognised
+  },
+  "tailwindCSS.includeLanguages": {
+    "postcss": "css"
+  },
+  "tailwindCSS.experimental.configFile": "tailwind.config.js",
+  "editor.quickSuggestions": {
+    "strings": true
+  }
 }
