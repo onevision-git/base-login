@@ -1,8 +1,9 @@
-// src/app/dashboard/layout.tsx
+// src/app/(app)/layout.tsx
 
 import '../../styles/globals.css';
-import Header from '../../components/DashboardHeader'; // Your custom header for dashboard
-import Footer from '../../components/DashboardFooter'; // Your custom footer for dashboard
+import Header from '../../components/DashboardHeader';
+import Footer from '../../components/DashboardFooter';
+import Breadcrumbs from '../../components/Breadcrumbs';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ type DashboardLayoutProps = { children: React.ReactNode };
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <>
-      <Header /> {/* Your custom dashboard header with logout, etc. */}
+      <Header />
+      {/* Breadcrumbs appear on all logged-in pages, directly under the header */}
+      <Breadcrumbs />
       <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
       <Footer />
     </>
