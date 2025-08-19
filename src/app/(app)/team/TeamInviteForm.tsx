@@ -1,7 +1,8 @@
-// src/app/(app)/team/TeamInviteForm.tsx
+// File: src/app/(app)/team/TeamInviteForm.tsx
 'use client';
 
 import React, { useState, FormEvent, useRef } from 'react';
+import { useRouter } from 'next/navigation'; // ⬅️ add this
 
 interface TeamInviteFormProps {
   userCount: number;
@@ -16,6 +17,8 @@ export default function TeamInviteForm({
   maxUsers,
   canInvite,
 }: TeamInviteFormProps) {
+  const router = useRouter(); // ⬅️ add this
+
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('standard');
 
@@ -125,6 +128,9 @@ export default function TeamInviteForm({
         setRole('standard');
         setExists(null);
         setEmailError(null);
+
+        // 🔁 Make the /team page re-render so the new row shows up without manual refresh
+        router.refresh(); // ⬅️ the key line
       } else {
         setMessage(result.error || 'Failed to send invitation.');
       }
@@ -179,7 +185,8 @@ export default function TeamInviteForm({
           </div>
 
           {/* Role */}
-          <div className="form-control mt-1 space-y-1">
+          <div className="form-control mt-2 space-y-1">
+            {/* mt-4 → mt-2 to tighten */}
             <label htmlFor="invite-role" className="label p-0">
               <span className="label-text text-sm">Role</span>
             </label>
