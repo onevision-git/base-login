@@ -179,7 +179,7 @@ export default function TeamInviteForm({
           </div>
 
           {/* Role */}
-          <div className="form-control mt-4 space-y-1">
+          <div className="form-control mt-1 space-y-1">
             <label htmlFor="invite-role" className="label p-0">
               <span className="label-text text-sm">Role</span>
             </label>

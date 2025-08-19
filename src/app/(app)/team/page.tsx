@@ -4,12 +4,15 @@ export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import jwt from 'jsonwebtoken';
+import mongoose, { Model, Types } from 'mongoose';
+
 import TeamInviteForm from './TeamInviteForm';
 import ResendInviteButton from './ResendInviteButton';
+import DeleteMemberButton from './DeleteMemberButton';
+
 import { connect } from '../../../lib/db';
 import User from '../../../models/User';
 import Invite from '../../../models/Invite';
-import mongoose from 'mongoose';
 import { getInviteInfo } from '../../../../packages/auth/src/service';
 
 type JwtPayload = {
@@ -18,60 +21,44 @@ type JwtPayload = {
   email?: string;
 };
 
-function getDomainFromEmail(email: string | undefined | null): string | null {
-  if (!email) return null;
-  const parts = email.split('@');
-  if (parts.length !== 2) return null;
-  return parts[1].toLowerCase();
-}
-
 type InviteStatus = 'PENDING' | 'ACCEPTED';
 
 type UiInvite = {
   id: string;
   email: string;
-  role: string; // derived from User collection
-  status: InviteStatus;
+  status: InviteStatus; // only 'PENDING' for this table
   invitedAt: string | null;
-  acceptedAt: string | null;
 };
 
-function formatDate(iso?: string | null) {
+type UiUser = {
+  id: string;
+  email: string;
+  role: 'admin' | 'standard';
+  createdAt: string | null;
+};
+
+type UserLean = {
+  _id: Types.ObjectId;
+  email: string;
+  role: 'admin' | 'standard';
+  createdAt?: Date | null;
+};
+
+type InviteLean = {
+  _id: Types.ObjectId;
+  email: string;
+  invitedAt?: Date | null;
+  status?: InviteStatus;
+};
+
+function fmt(iso?: string | null) {
   if (!iso) return '—';
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso! : d.toLocaleString();
 }
 
-function normaliseStatus(raw?: string | null): InviteStatus {
-  const s = (raw ?? '').toString().trim().toUpperCase();
-  return s === 'ACCEPTED' ? 'ACCEPTED' : 'PENDING';
-}
-
-function formatRole(raw?: string | null): string {
-  const s = (raw ?? '').toString().trim();
-  if (!s) return '—';
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(); // admin -> Admin
-}
-
-// Narrow types we need from Mongo
-type UserEmailOnly = { email?: string } | null;
-
-type InviteLean = {
-  _id: mongoose.Types.ObjectId;
-  email: string;
-  status?: string | null;
-  invitedAt?: Date | null;
-  acceptedAt?: Date | null;
-};
-
-type UserRoleLean = {
-  _id: mongoose.Types.ObjectId;
-  email?: string | null;
-  role?: string | null;
-  companyId?: mongoose.Types.ObjectId | string | null;
-};
-
 export default async function TeamPage() {
+  // --- Auth ---
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
   if (!token) redirect('/login');
@@ -84,121 +71,83 @@ export default async function TeamPage() {
   }
 
   await connect();
+  const companyObjectId = new mongoose.Types.ObjectId(payload.companyId);
 
+  // --- Seat info (for Invite form banner) ---
   const { userCount, maxUsers, canInvite } = await getInviteInfo(
     payload.companyId,
     payload.userId,
   );
 
-  // Kept for future domain-match UI (currently not passed to the form)
-  let inviterDomain = getDomainFromEmail(payload.email);
-  if (!inviterDomain) {
-    const inviterDoc = await (
-      User as unknown as mongoose.Model<{ email?: string }>
-    )
-      .findOne({ _id: payload.userId }, { email: 1, _id: 0 })
-      .lean<{ email?: string }>()
-      .exec();
-
-    const inviterEmail = (inviterDoc as UserEmailOnly)?.email;
-    inviterDomain = getDomainFromEmail(inviterEmail) ?? '';
-  }
-
-  const companyObjectId = new mongoose.Types.ObjectId(payload.companyId);
-  const inviteModel = Invite as unknown as mongoose.Model<InviteLean>;
-
-  // 1) Load invites for this company
-  const dbInvites = await inviteModel
-    .find(
-      { companyId: companyObjectId },
-      { email: 1, status: 1, invitedAt: 1, acceptedAt: 1 },
-    )
-    .sort({ invitedAt: -1 })
-    .lean()
+  // --- Load USERS (includes the current admin) ---
+  const userModel = User as unknown as Model<UserLean>;
+  const dbUsers = await userModel
+    .find({ companyId: companyObjectId }, { email: 1, role: 1, createdAt: 1 })
+    .sort({ createdAt: -1 })
+    .lean<UserLean[]>()
     .exec();
 
-  // 2) Build a set of invite emails and fetch matching users (for roles)
-  const inviteEmails = Array.from(
-    new Set(
-      (dbInvites ?? [])
-        .map((i) => (i.email || '').toLowerCase())
-        .filter(Boolean),
-    ),
-  );
+  const users: UiUser[] = (dbUsers ?? []).map((u) => ({
+    id: String(u._id),
+    email: String(u.email || ''),
+    role: u.role,
+    createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : null,
+  }));
 
-  let usersByEmail = new Map<string, string>();
-  if (inviteEmails.length > 0) {
-    const userModel = User as unknown as mongoose.Model<UserRoleLean>;
-    const dbUsers = await userModel
-      .find(
-        { companyId: companyObjectId, email: { $in: inviteEmails } },
-        { email: 1, role: 1 },
-      )
-      .lean()
-      .exec();
+  // --- Load PENDING INVITES only ---
+  const inviteModel = Invite as unknown as Model<InviteLean>;
+  const dbInvites = await inviteModel
+    .find(
+      { companyId: companyObjectId, status: 'PENDING' },
+      { email: 1, invitedAt: 1, status: 1 },
+    )
+    .sort({ invitedAt: -1 })
+    .lean<InviteLean[]>()
+    .exec();
 
-    usersByEmail = new Map(
-      (dbUsers ?? []).map((u) => [
-        String(u.email || '').toLowerCase(),
-        String(u.role || ''),
-      ]),
-    );
-  }
+  const invites: UiInvite[] = (dbInvites ?? []).map((inv) => ({
+    id: String(inv._id),
+    email: String(inv.email || ''),
+    status: 'PENDING',
+    invitedAt: inv.invitedAt ? new Date(inv.invitedAt).toISOString() : null,
+  }));
 
-  // 3) Map invites to UI rows, deriving role from the matched user (if any)
-  const invites: UiInvite[] = (dbInvites ?? []).map((inv) => {
-    const roleRaw = usersByEmail.get((inv.email || '').toLowerCase()) || '';
-    return {
-      id: inv._id?.toString?.() ?? '',
-      email: inv.email ?? '',
-      role: formatRole(roleRaw),
-      status: normaliseStatus(inv.status ?? undefined),
-      invitedAt: inv.invitedAt ? new Date(inv.invitedAt).toISOString() : null,
-      acceptedAt: inv.acceptedAt
-        ? new Date(inv.acceptedAt).toISOString()
-        : null,
-    };
-  });
+  const currentEmail = (payload.email || '').toLowerCase();
 
-  // === Visual only: match the centred card style used elsewhere ===
   return (
     <main className="px-4 py-10">
-      <section className="max-w-4xl mx-auto space-y-8">
-        {/* Title */}
+      <section className="max-w-5xl mx-auto space-y-8">
+        {/* Header */}
         <header className="text-center">
-          <h1 className="text-3xl font-bold">Team invites</h1>
+          <h1 className="text-3xl font-bold">Team</h1>
           <p className="text-base-content/70 mt-1">
-            Invite teammates and manage pending invites.
+            Invite teammates, manage users, and control access.
           </p>
         </header>
 
-        {/* Invite form card */}
+        {/* Invite form */}
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
             <h2 className="card-title">Invite a teammate</h2>
             <p className="text-sm opacity-70">
               You’re using {userCount} of {maxUsers} seats.
             </p>
-
             <div className="mt-2">
               <TeamInviteForm
                 userCount={userCount}
                 maxUsers={maxUsers}
                 canInvite={canInvite}
-                // inviterDomain will be added after we update the form props in a later step
-                // inviterDomain={inviterDomain || ''}
               />
             </div>
           </div>
         </div>
 
-        {/* Invites table card */}
+        {/* USERS table */}
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
-            <h2 className="card-title">Existing invites</h2>
+            <h2 className="card-title">Users</h2>
             <p className="text-sm opacity-70">
-              Lists invited emails and status. Resend sends a new 24h link and
-              updates “Invited” to now.
+              All accepted users in your company (including you).
             </p>
 
             <div className="overflow-x-auto mt-4">
@@ -207,45 +156,123 @@ export default async function TeamPage() {
                   <tr>
                     <th>Email</th>
                     <th>Role</th>
-                    <th>Status</th>
-                    <th>Invited</th>
-                    <th>Accepted</th>
-                    <th></th>
+                    <th>Joined</th>
+                    <th className="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {invites.map((inv) => {
-                    const accepted = inv.status === 'ACCEPTED';
+                  {users.map((u) => {
+                    const isSelf = u.email.toLowerCase() === currentEmail;
                     return (
-                      <tr key={inv.id}>
-                        <td>{inv.email}</td>
-                        <td>{inv.role}</td>
+                      <tr key={u.id}>
+                        <td>{u.email}</td>
                         <td>
-                          {accepted ? (
-                            <span className="badge badge-success badge-outline">
-                              Accepted
-                            </span>
-                          ) : (
-                            <span className="badge badge-warning badge-outline">
-                              Pending
-                            </span>
-                          )}
+                          <span
+                            className={
+                              u.role === 'admin'
+                                ? 'badge badge-primary badge-outline'
+                                : 'badge badge-neutral badge-outline'
+                            }
+                          >
+                            {u.role === 'admin' ? 'Admin' : 'Standard'}
+                          </span>
                         </td>
-                        <td>{formatDate(inv.invitedAt)}</td>
-                        <td>{formatDate(inv.acceptedAt)}</td>
+                        <td>{fmt(u.createdAt)}</td>
                         <td className="text-right">
-                          <ResendInviteButton
-                            inviteId={inv.id}
-                            disabled={accepted}
-                          />
+                          <div className="flex justify-end gap-2">
+                            {/* Delete user */}
+                            <div
+                              className="tooltip"
+                              data-tip={
+                                isSelf
+                                  ? 'Cannot delete yourself'
+                                  : 'Delete user'
+                              }
+                            >
+                              <DeleteMemberButton
+                                inviteId=""
+                                email={u.email}
+                                status="ACCEPTED"
+                                disabled={isSelf}
+                              />
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
+                  {users.length === 0 && (
+                    <tr>
+                      <td className="text-base-content/60" colSpan={4}>
+                        No users found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              <p className="text-xs opacity-70 mt-3">
+                You can’t delete your own account here. Ask another admin to
+                remove you if needed.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* PENDING INVITES table */}
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <h2 className="card-title">Pending invites</h2>
+            <p className="text-sm opacity-70">
+              Resend sends a new 24h link; Delete removes the invite.
+            </p>
+
+            <div className="overflow-x-auto mt-4">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Invited</th>
+                    <th className="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invites.map((inv) => (
+                    <tr key={inv.id}>
+                      <td>{inv.email}</td>
+                      <td>
+                        <span className="badge badge-warning badge-outline">
+                          Pending
+                        </span>
+                      </td>
+                      <td>{fmt(inv.invitedAt)}</td>
+                      <td className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {/* Resend */}
+                          <div className="tooltip" data-tip="Resend invite">
+                            <ResendInviteButton
+                              inviteId={inv.id}
+                              disabled={false}
+                            />
+                          </div>
+                          {/* Delete */}
+                          <div className="tooltip" data-tip="Delete invite">
+                            <DeleteMemberButton
+                              inviteId={inv.id}
+                              email={inv.email}
+                              status="PENDING"
+                              disabled={false}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                   {invites.length === 0 && (
                     <tr>
-                      <td className="text-base-content/60" colSpan={6}>
-                        No invites yet.
+                      <td className="text-base-content/60" colSpan={4}>
+                        No pending invites.
                       </td>
                     </tr>
                   )}
