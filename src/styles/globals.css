@@ -47,17 +47,35 @@
   --border: 1px;
 }
 
-/* === Auth form normaliser === */
+/* === Base === */
+@layer base {
+  html, body {
+    @apply bg-base-100 text-base-content;
+  }
+}
+
+/* === Auth form normaliser (applies to all forms using .auth-form) === */
 @layer components {
+  /* block spacing between stacked controls */
   .auth-form .form-control { @apply mt-4; }
+  .auth-form .form-control:first-child { @apply mt-0; }
 
-  .auth-form .label { @apply block p-0 mb-1.5; }
+  /* tidy label → field gap, consistent label sizing */
+  .auth-form .label { @apply block p-0 mb-1; }
+  .auth-form .label-text { @apply text-sm opacity-90; }
 
-  .auth-form .label .label-text { @apply opacity-90; }
+  /* ensure the element after a label doesn’t add extra margin */
+  .auth-form .label + * { @apply mt-0; }
 
+  /* full-width fields/buttons */
   .auth-form input.input,
   .auth-form .select,
   .auth-form textarea.textarea { @apply w-full; }
-
   .auth-form .btn { @apply w-full; }
+
+  /* help/error text that doesn’t jump layout */
+  .auth-form .form-help,
+  .auth-form .help,
+  .auth-form .hint { @apply text-xs min-h-5 opacity-70; }
+  .auth-form .error-text { @apply text-xs min-h-5 text-error; }
 }

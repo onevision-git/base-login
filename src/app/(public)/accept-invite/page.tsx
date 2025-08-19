@@ -42,7 +42,6 @@ function AcceptInviteContent() {
           </div>
         }
       >
-        {/* Empty children: we only show the message above */}
         <div />
       </AuthLayout>
     );
@@ -117,9 +116,9 @@ function AcceptInviteContent() {
         <input type="hidden" name="token" value={token} />
 
         {/* Password */}
-        <div className="form-control">
-          <label htmlFor="password" className="label">
-            <span className="label-text">Password</span>
+        <div className="form-control space-y-1">
+          <label htmlFor="password" className="label p-0">
+            <span className="label-text text-sm">Password</span>
           </label>
           <input
             id="password"
@@ -127,20 +126,20 @@ function AcceptInviteContent() {
             type="password"
             required
             minLength={8}
-            className="input input-bordered"
+            className="input input-bordered w-full"
             placeholder="Create a strong password"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={!!error && password.length < 8}
           />
-          <p className="text-xs opacity-70 mt-1">Minimum 8 characters.</p>
+          <p className="text-xs min-h-5 opacity-70">Minimum 8 characters.</p>
         </div>
 
         {/* Confirm Password */}
-        <div className="form-control mt-4">
-          <label htmlFor="confirm" className="label">
-            <span className="label-text">Confirm password</span>
+        <div className="form-control mt-4 space-y-1">
+          <label htmlFor="confirm" className="label p-0">
+            <span className="label-text text-sm">Confirm password</span>
           </label>
           <input
             id="confirm"
@@ -148,7 +147,9 @@ function AcceptInviteContent() {
             type="password"
             required
             minLength={8}
-            className={`input input-bordered ${passwordsMismatch ? 'input-error' : ''}`}
+            className={`input input-bordered w-full ${
+              passwordsMismatch ? 'input-error' : ''
+            }`}
             placeholder="Re-enter your password"
             autoComplete="new-password"
             value={confirm}
@@ -156,11 +157,11 @@ function AcceptInviteContent() {
             aria-invalid={passwordsMismatch}
             aria-describedby={passwordsMismatch ? 'mismatch-help' : undefined}
           />
-          {passwordsMismatch && (
-            <p id="mismatch-help" className="text-sm text-error mt-1">
-              Passwords do not match.
-            </p>
-          )}
+          <p id="mismatch-help" className="text-xs min-h-5">
+            {passwordsMismatch && (
+              <span className="text-error">Passwords do not match.</span>
+            )}
+          </p>
         </div>
 
         {/* Error */}
@@ -174,7 +175,7 @@ function AcceptInviteContent() {
         <div className="form-control mt-6">
           <button
             type="submit"
-            className="btn btn-primary"
+            className="btn btn-primary w-full"
             disabled={submitting}
           >
             {submitting ? 'Creating…' : 'Create account'}

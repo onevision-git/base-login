@@ -1,3 +1,4 @@
+// src/app/(app)/team/TeamInviteForm.tsx
 'use client';
 
 import React, { useState, FormEvent, useRef } from 'react';
@@ -144,14 +145,14 @@ export default function TeamInviteForm({
       {canInvite ? (
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
           {/* Email */}
-          <div className="form-control">
-            <label htmlFor="invite-email" className="label">
-              <span className="label-text">Email</span>
+          <div className="form-control space-y-1">
+            <label htmlFor="invite-email" className="label p-0">
+              <span className="label-text text-sm">Email</span>
             </label>
             <input
               id="invite-email"
               type="email"
-              className="input input-bordered"
+              className="input input-bordered w-full"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -164,7 +165,7 @@ export default function TeamInviteForm({
               aria-invalid={Boolean(emailError) || exists === true}
               aria-describedby="invite-email-help"
             />
-            <p id="invite-email-help" className="mt-1 text-sm">
+            <p id="invite-email-help" className="text-xs min-h-5">
               {checking && <span className="text-gray-500">Checking…</span>}
               {!checking && exists === true && (
                 <span className="text-error">
@@ -178,13 +179,13 @@ export default function TeamInviteForm({
           </div>
 
           {/* Role */}
-          <div className="form-control mt-4">
-            <label htmlFor="invite-role" className="label">
-              <span className="label-text">Role</span>
+          <div className="form-control mt-4 space-y-1">
+            <label htmlFor="invite-role" className="label p-0">
+              <span className="label-text text-sm">Role</span>
             </label>
             <select
               id="invite-role"
-              className="select select-bordered"
+              className="select select-bordered w-full"
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
             >
@@ -197,7 +198,7 @@ export default function TeamInviteForm({
           <div className="form-control mt-6">
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary w-full"
               disabled={
                 loading ||
                 exists === true ||
