@@ -1,20 +1,10 @@
-# Next.js Base Login
+### System Admin Accounts
 
-A starter template for Next.js 15 App-Router apps with TypeScript, TailwindCSS, and DaisyUI.
+- Define superadmin emails in your environment variables.
+- Local development: add them to `.env.local`  
+- Production: set them in Vercel Project Settings → Environment Variables
 
-## Usage
+Example:
+SUPERADMIN_EMAILS=matt@onevision.co.uk,alice@partner.com
 
-From an empty folder:
-
-```bash
-npx create-next-app@latest . \
-  --use-npm \
-  --eslint \
-  --typescript \
-  --src-dir \
-  --app \
-  --example "https://github.com/onevision-git/nextjs-base-login"
-npm run dev
-```
-
-After cloning, copy .env.example to .env.local and fill in your own values.
+Any user who signs in with one of these emails will see the **System Settings** page.
