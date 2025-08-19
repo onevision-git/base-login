@@ -1,7 +1,6 @@
 // src/components/DashboardHeader.tsx
 'use client';
 
-import Link from 'next/link';
 import BaseHeader from './BaseHeader';
 import LogoutButton from './LogoutButton';
 
