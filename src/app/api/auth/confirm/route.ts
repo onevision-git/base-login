@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 
 import User from '../../../../models/User';
 import { connect } from '../../../../lib/db'; // named import
+import { sendAdminNewSignupAlert } from '../../../../lib/adminAlerts'; // ⟵ NEW
 
 type ConfirmBody = {
   token: string;
@@ -54,6 +55,17 @@ export async function POST(req: Request) {
 
     user.emailVerified = true;
     await user.save();
+
+    // === Admin alert: new sign-up confirmed ===
+    // Fire-and-log; do not block the success response if email fails.
+    try {
+      await sendAdminNewSignupAlert({
+        userEmail: user.email,
+        appUrl: process.env.NEXT_PUBLIC_APP_URL ?? undefined,
+      });
+    } catch (e) {
+      console.error('Admin alert (new sign-up) failed:', e);
+    }
 
     return NextResponse.json({ message: 'Email confirmed successfully' });
   } catch (error) {

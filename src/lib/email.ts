@@ -19,6 +19,47 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * Generic sender: sends exactly the HTML/text you supply, with your from address.
+ * Use this for system notifications, admin alerts, etc.
+ */
+export async function sendEmail(opts: {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+}) {
+  const { to, subject, html, text } = opts;
+
+  if (!resend) {
+    // Dev fallback (no RESEND_API_KEY): log only
+    console.log(
+      '[email:dev-fallback] To:',
+      to,
+      '\nSubject:',
+      subject,
+      '\nText:\n',
+      text ?? '[no-text]',
+      '\nHTML:\n',
+      html,
+    );
+    return { id: 'dev-fallback', error: null as null };
+  }
+
+  const result = await resend.emails.send({
+    from: EMAIL_FROM,
+    to,
+    subject,
+    text,
+    html,
+  });
+
+  if (result.error) {
+    console.error('[email] resend error:', result.error);
+  }
+  return result;
+}
+
 function emailLayout(opts: {
   title: string;
   bodyHtml: string;
@@ -34,13 +75,9 @@ function emailLayout(opts: {
   <meta name="color-scheme" content="light only" />
   <meta name="supported-color-schemes" content="light only" />
   <title>${escapeHtml(title)}</title>
-  <style>
-    /* Dark mode can be added later; keeping it ultra-compatible for now */
-    a:hover { opacity: 0.92; }
-  </style>
+  <style>a:hover{opacity:.92}</style>
 </head>
 <body style="margin:0; padding:0; background:#f3f4f6;">
-  <!-- hidden preview text -->
   ${
     preview
       ? `<div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">
@@ -54,7 +91,7 @@ function emailLayout(opts: {
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
           <tr>
             <td style="padding:20px 24px; border-bottom:1px solid #e5e7eb;">
-              <h1 style="margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:18px; color:#111827;">
+              <h1 style="margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:18px; color:#111827;">
                 ${escapeHtml(APP_NAME)}
               </h1>
             </td>
@@ -66,15 +103,17 @@ function emailLayout(opts: {
           </tr>
           <tr>
             <td style="padding:16px 24px; border-top:1px solid #e5e7eb;">
-              <p style="margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:12px; line-height:1.6; color:#6b7280;">
-                You’re receiving this email because a password reset was requested for your account.
-                If this wasn’t you, please ignore this email or contact
+              <p style="margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.6; color:#6b7280;">
+                You’re receiving this message because an action was requested in ${escapeHtml(
+                  APP_NAME,
+                )}.
+                If you didn’t expect this, please ignore this email or contact
                 <a href="mailto:${SUPPORT_EMAIL}" style="color:#2563eb; text-decoration:none;">${SUPPORT_EMAIL}</a>.
               </p>
             </td>
           </tr>
         </table>
-        <p style="margin:16px 0 0 0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:11px; color:#9ca3af;">
+        <p style="margin:16px 0 0 0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:11px; color:#9ca3af;">
           © ${new Date().getFullYear()} ${escapeHtml(APP_NAME)}. All rights reserved.
         </p>
       </td>
@@ -135,7 +174,6 @@ export async function sendPasswordResetEmail(opts: {
 
   if (!resend) {
     // Dev fallback
-
     console.log(
       '[email:dev-fallback] To:',
       to,

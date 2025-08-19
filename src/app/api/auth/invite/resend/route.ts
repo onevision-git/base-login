@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 import { connect } from '@/lib/db';
 import Invite from '@/models/Invite';
 import { getInviteInfo } from '../../../../../../packages/auth/src/service';
-import { sendMagicLink } from '../../../../../../packages/auth/src/email';
+import { sendInviteEmail } from '../../../../../../packages/auth/src/email';
 
 function bad(status: number, error: string) {
   return NextResponse.json({ error }, { status });
@@ -31,12 +31,8 @@ const InviteModel = Invite as unknown as mongoose.Model<InviteLean>;
 export async function POST(req: Request) {
   // Load env vars at runtime, not import time
   const JWT_SECRET = process.env.JWT_SECRET;
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
-
-  if (!JWT_SECRET || !APP_URL) {
-    throw new Error(
-      'Missing required environment variables: JWT_SECRET, NEXT_PUBLIC_APP_URL',
-    );
+  if (!JWT_SECRET) {
+    throw new Error('Missing required environment variable: JWT_SECRET');
   }
 
   // 1) Auth
@@ -44,7 +40,7 @@ export async function POST(req: Request) {
   const token = cookieStore.get('token')?.value;
   if (!token) return bad(401, 'Unauthorized');
 
-  let payload: { userId: string; companyId: string };
+  let payload: { userId: string; companyId: string; email: string };
   try {
     payload = jwt.verify(token, JWT_SECRET) as typeof payload;
   } catch {
@@ -86,7 +82,7 @@ export async function POST(req: Request) {
     return bad(409, 'Invite already accepted');
   }
 
-  // 5) Generate fresh token (include role if present on Invite)
+  // 5) Generate fresh token (include role if present on Invite) and resend
   try {
     const inviteToken = jwt.sign(
       {
@@ -99,9 +95,13 @@ export async function POST(req: Request) {
       { expiresIn: '24h' },
     );
 
-    const inviteLink = `${APP_URL}/accept-invite?token=${inviteToken}`;
-
-    await sendMagicLink(invite.email, inviteLink);
+    // Use same template/copy as the first invite, including inviter line.
+    await sendInviteEmail({
+      to: invite.email,
+      token: inviteToken,
+      inviterEmail: payload.email, // "<email> has invited you to sign-up to Base Login"
+      // companyName: 'Base Login', // optional: include to brand the subject
+    });
 
     // 6) Bump invitedAt so UI shows recent resend time
     await InviteModel.updateOne(
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[resend] error:', err);
+    console.error('[invite/resend] error:', err);
     return bad(500, 'Failed to resend invite');
   }
 }

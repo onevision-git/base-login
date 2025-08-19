@@ -9,6 +9,7 @@ import { connect } from '@/lib/db';
 import User from '@/models/User';
 import Invite from '@/models/Invite';
 import Company from '@/models/Company';
+import { sendAdminInviteAcceptedAlert } from '@/lib/adminAlerts'; // ⟵ NEW
 
 // Common JSON error helper
 function bad(status: number, error: string) {
@@ -124,6 +125,20 @@ export async function POST(req: Request) {
 
     if (existing) {
       await markLatestInviteAccepted(payload.companyId, email);
+      // Optional admin alert even on already-existing user acceptance
+      try {
+        const inviterEmail = await tryGetInviterEmail(payload.inviterId);
+        await sendAdminInviteAcceptedAlert({
+          inviteeEmail: email,
+          inviterEmail,
+          appUrl: process.env.NEXT_PUBLIC_APP_URL ?? undefined,
+        });
+      } catch (e) {
+        console.error(
+          'Admin alert (invite accepted, existing user) failed:',
+          e,
+        );
+      }
       return NextResponse.redirect(new URL('/login?already=1', req.url));
     }
 
@@ -168,6 +183,19 @@ export async function POST(req: Request) {
     // 5) Mark the invite as accepted
     await markLatestInviteAccepted(payload.companyId, email);
 
+    // 6) === Admin alert: invite accepted ===
+    // Fire-and-log; do not block redirect if email fails.
+    try {
+      const inviterEmail = await tryGetInviterEmail(payload.inviterId);
+      await sendAdminInviteAcceptedAlert({
+        inviteeEmail: email,
+        inviterEmail,
+        appUrl: process.env.NEXT_PUBLIC_APP_URL ?? undefined,
+      });
+    } catch (e) {
+      console.error('Admin alert (invite accepted) failed:', e);
+    }
+
     return NextResponse.redirect(new URL('/login?accepted=1', req.url));
   } catch (e) {
     console.error('accept-invite error:', e);
@@ -191,6 +219,23 @@ async function markLatestInviteAccepted(
     ).exec();
   } catch (e) {
     console.error('accept-invite: failed to mark invite accepted:', e);
+  }
+}
+
+// Best-effort lookup of inviter's email (optional)
+async function tryGetInviterEmail(
+  inviterId?: string,
+): Promise<string | undefined> {
+  if (!inviterId) return undefined;
+  try {
+    const row = await UserModel.findById(new mongoose.Types.ObjectId(inviterId))
+      .select('email')
+      .lean()
+      .exec();
+    const email = (row as { email?: string } | null)?.email?.trim();
+    return email || undefined;
+  } catch {
+    return undefined;
   }
 }
 

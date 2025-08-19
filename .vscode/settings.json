@@ -1,9 +1,9 @@
 {
-  "css.validate": false,                // stop false errors like "Unknown at rule @apply"
+  "css.validate": false, // stop false errors like "Unknown at rule @apply"
   "scss.validate": false,
   "less.validate": false,
   "files.associations": {
-    "*.css": "postcss"                  // treat CSS as PostCSS so @layer/@apply are recognised
+    "*.css": "postcss" // treat CSS as PostCSS so @layer/@apply are recognised
   },
   "tailwindCSS.includeLanguages": {
     "postcss": "css"

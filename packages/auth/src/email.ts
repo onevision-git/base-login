@@ -6,7 +6,11 @@ import { Resend } from 'resend';
 // Everything happens at runtime inside functions.
 
 function requireEnv(
-  name: 'RESEND_API_KEY' | 'EMAIL_FROM' | 'NEXT_PUBLIC_APP_URL',
+  name:
+    | 'RESEND_API_KEY'
+    | 'EMAIL_FROM'
+    | 'NEXT_PUBLIC_APP_URL'
+    | 'NEXT_PUBLIC_APP_NAME',
 ): string {
   const v = process.env[name];
   if (!v || !v.trim())
@@ -16,6 +20,80 @@ function requireEnv(
 
 function withoutTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
+}
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function button(href: string, label: string) {
+  const s =
+    'display:inline-block;padding:12px 18px;border-radius:10px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600';
+  return `<a href="${href}" style="${s}" target="_blank" rel="noopener">${escapeHtml(
+    label,
+  )}</a>`;
+}
+
+function layout(opts: { title: string; bodyHtml: string; preview?: string }) {
+  const { title, bodyHtml, preview } = opts;
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Your App';
+
+  return `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+  <title>${escapeHtml(title)}</title>
+  <style>a:hover{opacity:.92}</style>
+</head>
+<body style="margin:0; padding:0; background:#f3f4f6;">
+  ${
+    preview
+      ? `<div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">${escapeHtml(
+          preview,
+        )}</div>`
+      : ''
+  }
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+    <tr>
+      <td align="center" style="padding:24px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <tr>
+            <td style="padding:20px 24px; border-bottom:1px solid #e5e7eb;">
+              <h1 style="margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:18px; color:#111827;">
+                ${escapeHtml(appName)}
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px; border-top:1px solid #e5e7eb;">
+              <p style="margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.6; color:#6b7280;">
+                You’re receiving this email because it was requested from the app.
+                If you didn’t expect this, you can ignore it or contact support.
+              </p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:16px 0 0 0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:11px; color:#9ca3af;">
+          © ${new Date().getFullYear()} ${escapeHtml(appName)}. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`.trim();
 }
 
 async function getResendClient(): Promise<Resend> {
@@ -36,18 +114,54 @@ function getEmailId(response: unknown): string | null {
   return null;
 }
 
+/**
+ * Magic-link email (sign-up confirm + sign-in). Uses shared layout & text fallback.
+ */
 export async function sendMagicLink(to: string, link: string) {
   const resend = await getResendClient();
   const from = requireEnv('EMAIL_FROM');
+  const appUrl = withoutTrailingSlash(requireEnv('NEXT_PUBLIC_APP_URL'));
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Your App';
+
+  const safe = escapeHtml(link);
+  const subject = `Confirm your ${appName} email`;
+  const preview = `Click the button to confirm your email and continue.`;
+
+  const bodyHtml = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#0f172a; line-height:1.6;">
+      <h2 style="margin:0 0 12px 0; font-size:20px; color:#111827;">Confirm your email</h2>
+      <p style="margin:0 0 12px 0;">Thanks for signing up. Click the button below to confirm your email and finish setting up your account.</p>
+      <p style="margin:16px 0;">
+        ${button(safe, 'Confirm email')}
+      </p>
+      <p style="margin:12px 0; word-break:break-all;">
+        Or copy and paste this link:<br />
+        <a href="${safe}" style="color:#2563eb; text-decoration:none;">${safe}</a>
+      </p>
+      <p style="margin:16px 0 0 0; font-size:13px; color:#334155;">
+        After confirming, you’ll be redirected to your dashboard: ${escapeHtml(appUrl)}/(app)/dashboard
+      </p>
+    </div>
+  `.trim();
+
+  const html = layout({ title: subject, bodyHtml, preview });
+  const text = [
+    `Confirm your ${appName} email`,
+    '',
+    `Thanks for signing up. Open this link to confirm your email:`,
+    link,
+    '',
+    `Dashboard: ${appUrl}/(app)/dashboard`,
+  ].join('\n');
 
   const response = await resend.emails.send({
     from,
     to,
-    subject: 'Confirm your email',
-    html: `<p>Click here to log in: <a href="${link}">${link}</a></p>`,
+    subject,
+    html,
+    text,
   });
 
-  // Optional logging (non-fatal)
   console.log('[sendMagicLink] sent', {
     to,
     id: getEmailId(response),
@@ -55,64 +169,80 @@ export async function sendMagicLink(to: string, link: string) {
 }
 
 /**
- * Send a team invite email that routes the user to /accept-invite
- * where they can set their password. The token should be generated by your invite API.
- *
- * Usage:
- *   await sendInviteEmail({ to, token, companyName });
+ * Invite email (now supports optional inviterEmail for copy).
  */
 export async function sendInviteEmail(params: {
   to: string;
   token: string;
   companyName?: string;
+  inviterEmail?: string; // NEW (optional)
 }) {
   const resend = await getResendClient();
   const from = requireEnv('EMAIL_FROM');
   const appUrl = withoutTrailingSlash(requireEnv('NEXT_PUBLIC_APP_URL'));
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Base Login';
 
-  const { to, token, companyName } = params;
+  const { to, token, companyName, inviterEmail } = params;
 
   const link = `${appUrl}/accept-invite?token=${encodeURIComponent(token)}`;
+  const safeLink = escapeHtml(link);
 
   const subject = companyName
-    ? `You're invited to join ${companyName}`
-    : 'You’re invited to join';
+    ? `You’re invited to join ${companyName}`
+    : `You’re invited to join ${appName}`;
+  const preview = `Accept the invite and set your password to join.`;
 
-  const html = `
-    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#0f172a">
+  const invitedByLine = inviterEmail
+    ? `<p style="margin:0 0 12px; color:#334155;"><strong>${escapeHtml(
+        inviterEmail,
+      )}</strong> has invited you to sign up to ${escapeHtml(appName)}.</p>`
+    : '';
+
+  const bodyHtml = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#0f172a; line-height:1.6;">
+      <h2 style="margin:0 0 12px 0; font-size:20px; color:#111827;">You're invited</h2>
+      ${invitedByLine}
       <p style="margin:0 0 12px">
         You’ve been invited${companyName ? ` to join <strong>${escapeHtml(companyName)}</strong>` : ''}.
       </p>
-      <p style="margin:0 0 20px">Click the button below to accept the invite and set your password.</p>
-      <p style="margin:0 0 20px">
-        <a href="${link}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#111827;color:#fff;text-decoration:none;font-weight:600">
-          Accept invite
-        </a>
+      <p style="margin:0 0 16px">Click the button below to accept the invite and set your password.</p>
+      <p style="margin:16px 0;">
+        ${button(safeLink, 'Accept invite')}
       </p>
-      <p style="margin:0 0 8px">Or paste this link into your browser:</p>
-      <p style="margin:0 0 20px;color:#334155">${link}</p>
-      <p style="margin:0;color:#64748b;font-size:12px">If you didn’t expect this invitation, you can safely ignore this email.</p>
+      <p style="margin:12px 0; word-break:break-all;">
+        Or paste this link into your browser:<br />
+        <a href="${safeLink}" style="color:#2563eb; text-decoration:none;">${safeLink}</a>
+      </p>
+      <p style="margin:16px 0 0 0; font-size:13px; color:#334155;">
+        After accepting, you’ll be redirected to the sign‑in page.
+      </p>
     </div>
   `.trim();
+
+  const text = [
+    subject,
+    inviterEmail
+      ? `${inviterEmail} has invited you to sign up to ${appName}.`
+      : '',
+    '',
+    'Accept the invite and set your password using this link:',
+    link,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const html = layout({ title: subject, bodyHtml, preview });
 
   const response = await resend.emails.send({
     from,
     to,
     subject,
     html,
+    text,
   });
 
   console.log('[sendInviteEmail] sent', {
     to,
     id: getEmailId(response),
   });
-}
-
-// --- helpers ---
-function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }

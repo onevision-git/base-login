@@ -1,3 +1,5 @@
+// File: src/app/api/auth/password-reset/confirm/route.ts
+
 import { NextResponse } from 'next/server';
 import {
   verifyResetToken,

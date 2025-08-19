@@ -67,7 +67,7 @@ export async function POST(req: Request) {
   // 2) Lazy-load modules that may read env at import time
   const [
     { getInviteInfo },
-    { sendMagicLink },
+    { sendInviteEmail }, // ⟵ CHANGED: use invite template with inviter line
     { connect },
     { default: User },
     { default: Invite },
@@ -173,10 +173,13 @@ export async function POST(req: Request) {
       { expiresIn: '24h' },
     );
 
-    const inviteLink = `${APP_URL.replace(/\/$/, '')}/accept-invite?token=${encodeURIComponent(
-      inviteToken,
-    )}`;
-    await sendMagicLink(inviteeEmail, inviteLink);
+    // Use the updated invite email (adds "inviter has invited you..." line)
+    await sendInviteEmail({
+      to: inviteeEmail,
+      token: inviteToken,
+      inviterEmail, // ⟵ NEW: drives the copy change
+      // companyName: 'Base Login', // optional: pass if you want brand in subject
+    });
 
     // 9) Persist the invite
     try {

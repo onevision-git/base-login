@@ -1,100 +1,91 @@
+// File: src/app/api/auth/password-reset/request/route.ts
+
 import { NextResponse } from 'next/server';
 import { createResetToken } from '@/lib/passwordReset';
-import { getCollection } from '@/lib/mongodb';
 import { sendPasswordResetEmail } from '@/lib/email';
-import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
-import type { IUser } from '@/models/User';
 
-function getClientIp(req: Request): string {
-  const xfwd = req.headers.get('x-forwarded-for');
-  if (xfwd) {
-    const first = xfwd.split(',')[0]?.trim();
-    if (first) return first;
-  }
-  const real = req.headers.get('x-real-ip');
-  if (real) return real.trim();
-  return 'unknown';
+// Always return 202 to avoid leaking whether an email exists.
+// Log internal errors but never surface them to the client.
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
 export async function POST(req: Request) {
-  const ENABLED = process.env.ENABLE_PASSWORD_RESET === 'true';
-  const RL_LIMIT = parseInt(process.env.RESET_RL_LIMIT || '5', 10);
-  const RL_WINDOW_MS = parseInt(
-    process.env.RESET_RL_WINDOW_MS || String(15 * 60 * 1000),
-    10,
-  );
-
-  if (!ENABLED) {
-    return new NextResponse('Not Found', {
-      status: 404,
-      headers: { 'x-reset-enabled': 'false' },
-    });
+  // Required env at runtime (no top-level reads elsewhere)
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || '';
+  if (!APP_URL) {
+    // If misconfigured, respond as if OK but include a header so we can spot it.
+    return NextResponse.json(
+      {
+        message:
+          'If an account exists for that email, we’ve sent a reset link.',
+      },
+      {
+        status: 202,
+        headers: { 'x-reset-misconfigured': 'NEXT_PUBLIC_APP_URL missing' },
+      },
+    );
   }
 
-  let email: string | undefined;
+  // Accept JSON only (UI already sends JSON)
+  const ctype = req.headers.get('content-type') || '';
+  if (!ctype.includes('application/json')) {
+    return NextResponse.json(
+      { error: 'Content-Type must be application/json.' },
+      { status: 415 },
+    );
+  }
+
+  // Parse & validate input
+  let email = '';
   try {
     const body = await req.json();
-    email = (body?.email as string | undefined)?.trim();
+    email = (body?.email ?? '').toString().trim().toLowerCase();
   } catch {
-    // ignore
+    // fall through
   }
 
-  if (!email) {
-    return new NextResponse('Email is required', { status: 400 });
-  }
-
-  const emailLc = email.toLowerCase();
-
-  const ip = getClientIp(req);
-  const key = `pwdreset:${ip}:${emailLc}`;
-  const rl = checkRateLimit(key, RL_LIMIT, RL_WINDOW_MS);
-  if (!rl.allowed) {
-    return new NextResponse('Too many requests', {
-      status: 429,
-      headers: {
-        ...rateLimitHeaders(rl),
-        'x-reset-enabled': 'true',
+  if (!email || !isValidEmail(email)) {
+    // Deliberately return 202 to avoid account enumeration
+    return NextResponse.json(
+      {
+        message:
+          'If an account exists for that email, we’ve sent a reset link.',
       },
-    });
+      { status: 202 },
+    );
   }
 
-  let devToken: string | undefined;
-
+  // Core flow: create token & send email.
   try {
-    const users = await getCollection<IUser>('users');
-    const user = await users.findOne({ email: emailLc });
+    const { token, expiresAt } = await createResetToken(email);
 
-    if (user) {
-      const { token, expiresAt } = await createResetToken(emailLc);
+    const base = APP_URL.replace(/\/+$/, '');
+    const resetUrl = `${base}/reset-password?token=${encodeURIComponent(
+      token,
+    )}`;
 
-      const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL ||
-        `${new URL(req.url).protocol}//${req.headers.get('host')}`;
-      const base = appUrl.replace(/\/$/, '');
-      const resetUrl = `${base}/reset-password?token=${encodeURIComponent(token)}`;
-
-      await sendPasswordResetEmail({ to: emailLc, resetUrl, expiresAt });
-
-      console.log(
-        '[password-reset] resetUrl:',
-        resetUrl,
-        'expiresAt:',
-        expiresAt.toISOString(),
-      );
-
-      if (process.env.NODE_ENV !== 'production') {
-        devToken = token;
-      }
-    }
-  } catch (err) {
-    console.error('[password-reset][request] error:', err);
+    await sendPasswordResetEmail({
+      to: email,
+      resetUrl,
+      expiresAt,
+    });
+  } catch (e) {
+    // Log but do not leak details
+    console.error('[password-reset/request] error:', e);
   }
 
-  const headers: HeadersInit = {
-    ...rateLimitHeaders(rl),
-    'x-reset-enabled': 'true',
-  };
-  if (devToken) headers['x-dev-reset-token'] = devToken;
+  // Always 202
+  return NextResponse.json(
+    {
+      message: 'If an account exists for that email, we’ve sent a reset link.',
+    },
+    { status: 202 },
+  );
+}
 
-  return new NextResponse(null, { status: 202, headers });
+// Only POST is allowed via UI
+export async function GET() {
+  return NextResponse.json({ error: 'Method not allowed.' }, { status: 405 });
 }

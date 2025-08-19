@@ -23,10 +23,13 @@ export async function POST(req: Request) {
     throw new Error('Missing JWT_SECRET');
   }
   const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-  // Prefer NEXT_PUBLIC_APP_URL, fall back to request host
-  const appUrlEnv = process.env.NEXT_PUBLIC_APP_URL;
+  const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@onevision.co.uk';
+  const APP_URL_ENV = process.env.NEXT_PUBLIC_APP_URL;
+
+  // Prefer NEXT_PUBLIC_APP_URL; fall back to request host for the confirm link
   const inferredBase = `${new URL(req.url).protocol}//${req.headers.get('host')}`;
-  const APP_URL = appUrlEnv && appUrlEnv.trim() ? appUrlEnv : inferredBase;
+  const APP_URL =
+    APP_URL_ENV && APP_URL_ENV.trim() ? APP_URL_ENV : inferredBase;
   const BASE = APP_URL.replace(/\/$/, '');
 
   // Lazy init email client only if configured
@@ -91,18 +94,55 @@ export async function POST(req: Request) {
 
     const confirmUrl = `${BASE}/confirm?token=${encodeURIComponent(token)}`;
 
-    // Send email if configured; otherwise just log the URL
+    // ─────────────────────────────────────────────────────────────────────
+    // Styled email path (shared template) when env is fully configured
+    // ─────────────────────────────────────────────────────────────────────
+    // We use the shared "magic-link" template IF NEXT_PUBLIC_APP_URL exists,
+    // otherwise we keep your original simple HTML / console log fallback.
     if (resend) {
-      try {
-        const response = await resend.emails.send({
-          from: 'noreply@onevision.co.uk',
-          to: email,
-          subject: 'Confirm your email',
-          html: `<p>Thanks for signing up. Please <a href="${confirmUrl}">click here to confirm your email</a>.</p>`,
-        });
-        console.log('✔ Email sent via Resend:', response);
-      } catch (emailError) {
-        console.error('❌ Error sending email via Resend:', emailError);
+      if (APP_URL_ENV && APP_URL_ENV.trim()) {
+        try {
+          const { sendMagicLink } = await import(
+            '../../../../../packages/auth/src/email'
+          );
+          await sendMagicLink(email, confirmUrl);
+          console.log(
+            '✔ Signup email sent via shared template (sendMagicLink)',
+          );
+        } catch (emailError) {
+          // Fall back to simple HTML on any template/env issue
+          console.error(
+            '⚠ sendMagicLink failed; falling back to simple HTML:',
+            emailError,
+          );
+          try {
+            const response = await resend.emails.send({
+              from: EMAIL_FROM,
+              to: email,
+              subject: 'Confirm your email',
+              html: `<p>Thanks for signing up. Please <a href="${confirmUrl}">click here to confirm your email</a>.</p>`,
+            });
+            console.log('✔ Email sent via Resend (fallback):', response);
+          } catch (fallbackErr) {
+            console.error(
+              '❌ Error sending email via Resend (fallback):',
+              fallbackErr,
+            );
+          }
+        }
+      } else {
+        // No NEXT_PUBLIC_APP_URL -> keep original simple HTML
+        try {
+          const response = await resend.emails.send({
+            from: EMAIL_FROM,
+            to: email,
+            subject: 'Confirm your email',
+            html: `<p>Thanks for signing up. Please <a href="${confirmUrl}">click here to confirm your email</a>.</p>`,
+          });
+          console.log('✔ Email sent via Resend (no APP_URL env):', response);
+        } catch (emailError) {
+          console.error('❌ Error sending email via Resend:', emailError);
+        }
       }
     } else {
       console.warn(

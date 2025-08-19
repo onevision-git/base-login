@@ -1,5 +1,5 @@
 ﻿/* src/styles/globals.css */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Configure daisyUI v5 directly in CSS (Tailwind v4 style) */
 @plugin "daisyui" {
@@ -10,7 +10,7 @@
 
 /* Define the custom "app" theme */
 @plugin "daisyui/theme" {
-  name: "app";
+  name: 'app';
   default: true;
   color-scheme: light;
 
@@ -21,15 +21,15 @@
   --color-base-content: #111827;
 
   /* Brand colours */
-  --color-primary: #2563eb;            /* blue-600 */
+  --color-primary: #2563eb; /* blue-600 */
   --color-primary-content: #ffffff;
-  --color-secondary: #9333ea;          /* purple-600 */
+  --color-secondary: #9333ea; /* purple-600 */
   --color-secondary-content: #ffffff;
-  --color-accent: #f97316;             /* orange-500 */
+  --color-accent: #f97316; /* orange-500 */
   --color-accent-content: #111827;
 
   /* Support */
-  --color-neutral: #1f2937;            /* gray-800 */
+  --color-neutral: #1f2937; /* gray-800 */
   --color-neutral-content: #f3f4f6;
   --color-info: #0ea5e9;
   --color-info-content: #ffffff;
@@ -49,7 +49,8 @@
 
 /* === Base === */
 @layer base {
-  html, body {
+  html,
+  body {
     @apply bg-base-100 text-base-content;
   }
 }
@@ -57,25 +58,43 @@
 /* === Auth form normaliser (applies to all forms using .auth-form) === */
 @layer components {
   /* block spacing between stacked controls */
-  .auth-form .form-control { @apply mt-4; }
-  .auth-form .form-control:first-child { @apply mt-0; }
+  .auth-form .form-control {
+    @apply mt-4;
+  }
+  .auth-form .form-control:first-child {
+    @apply mt-0;
+  }
 
   /* tidy label → field gap, consistent label sizing */
-  .auth-form .label { @apply block p-0 mb-1; }
-  .auth-form .label-text { @apply text-sm opacity-90; }
+  .auth-form .label {
+    @apply block p-0 mb-1;
+  }
+  .auth-form .label-text {
+    @apply text-sm opacity-90;
+  }
 
   /* ensure the element after a label doesn’t add extra margin */
-  .auth-form .label + * { @apply mt-0; }
+  .auth-form .label + * {
+    @apply mt-0;
+  }
 
   /* full-width fields/buttons */
   .auth-form input.input,
   .auth-form .select,
-  .auth-form textarea.textarea { @apply w-full; }
-  .auth-form .btn { @apply w-full; }
+  .auth-form textarea.textarea {
+    @apply w-full;
+  }
+  .auth-form .btn {
+    @apply w-full;
+  }
 
   /* help/error text that doesn’t jump layout */
   .auth-form .form-help,
   .auth-form .help,
-  .auth-form .hint { @apply text-xs min-h-5 opacity-70; }
-  .auth-form .error-text { @apply text-xs min-h-5 text-error; }
+  .auth-form .hint {
+    @apply text-xs min-h-5 opacity-70;
+  }
+  .auth-form .error-text {
+    @apply text-xs min-h-5 text-error;
+  }
 }
