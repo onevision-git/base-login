@@ -45,7 +45,7 @@ export default async function DashboardPage() {
           <div className="mt-4">
             {isAdmin ? (
               <Link href="/team" className="btn btn-primary">
-                Invite users
+                Manage users
               </Link>
             ) : (
               <p className="text-sm opacity-70">
