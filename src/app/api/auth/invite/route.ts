@@ -6,7 +6,8 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
 // ⚠️ Anything that might touch env vars (db/auth/email/models)
-// is imported inside the POST handler via dynamic import().
+// is imported inside the POST handler via dynamic import(). This keeps
+// Next.js builds safe and avoids top-level env reads.
 
 function bad(status: number, error: string) {
   return NextResponse.json({ error }, { status });
@@ -70,19 +71,23 @@ export async function POST(req: Request) {
     { connect },
     { default: User },
     { default: Invite },
+    { default: Company },
   ] = await Promise.all([
     import('../../../../../packages/auth/src/service'),
     import('../../../../../packages/auth/src/email'),
     import('@/lib/db'),
     import('@/models/User'),
     import('@/models/Invite'),
+    import('@/models/Company'),
   ]);
 
-  // Cast after dynamic import to keep types local to runtime
   const InviteModel = Invite as unknown as mongoose.Model<InviteDocShape>;
   const UserModel = User as unknown as mongoose.Model<UserDocShape>;
+  const CompanyModel = Company as unknown as mongoose.Model<
+    mongoose.Document & { maxUsers?: number }
+  >;
 
-  // 3) Authorisation / seat limit
+  // 3) Authorisation / role checks (kept as-is)
   const { canInvite } = await getInviteInfo(payload.companyId, payload.userId);
   if (!canInvite) return bad(403, 'Forbidden');
 
@@ -126,7 +131,36 @@ export async function POST(req: Request) {
     return bad(500, 'Failed to validate invite.');
   }
 
-  // 7) Generate invite token & send email
+  // 7) Seat-cap enforcement: users + pending invites must be < maxUsers
+  try {
+    const [usersCount, pendingInvites, company] = await Promise.all([
+      UserModel.countDocuments({
+        companyId: new mongoose.Types.ObjectId(payload.companyId),
+      }).exec(),
+      InviteModel.countDocuments({
+        companyId: new mongoose.Types.ObjectId(payload.companyId),
+        status: { $ne: 'ACCEPTED' },
+      }).exec(),
+      CompanyModel.findById(new mongoose.Types.ObjectId(payload.companyId))
+        .select('maxUsers')
+        .lean()
+        .exec(),
+    ]);
+
+    const max = Number(company?.maxUsers ?? 0);
+    if (!(max > 0)) {
+      return bad(400, 'User limit reached for this company');
+    }
+
+    if (usersCount + pendingInvites >= max) {
+      return bad(400, 'User limit reached for this company');
+    }
+  } catch (e) {
+    console.error('Seat-cap check error:', e);
+    return bad(500, 'Failed to validate seat availability.');
+  }
+
+  // 8) Generate invite token & send email
   try {
     const inviteToken = jwt.sign(
       {
@@ -144,7 +178,7 @@ export async function POST(req: Request) {
     )}`;
     await sendMagicLink(inviteeEmail, inviteLink);
 
-    // 8) Persist the invite so /team can list it
+    // 9) Persist the invite
     try {
       await InviteModel.create({
         companyId: new mongoose.Types.ObjectId(payload.companyId),
@@ -157,7 +191,7 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       console.error('[invite] create error:', e);
-      // Non-fatal: email already sent; UI will still function
+      // Non-fatal: email already sent
     }
 
     return NextResponse.json({ success: true });

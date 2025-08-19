@@ -8,6 +8,7 @@ import { Resend } from 'resend';
 import Company from '../../../../models/Company';
 import User from '../../../../models/User';
 import { connect } from '../../../../lib/db';
+import { getDefaultCompanyMaxUsers } from '../../../../lib/systemSettings';
 
 type SignupBody = {
   email: string;
@@ -53,10 +54,13 @@ export async function POST(req: Request) {
     let company = await Company.findOne({ domain });
 
     if (!company) {
+      // Get platform default from System Settings
+      const defaultMaxUsers = await getDefaultCompanyMaxUsers();
+
       company = await Company.create({
         name: orgName,
         domain,
-        maxUsers: 3, // default max users
+        maxUsers: defaultMaxUsers, // seeded from System Settings
       });
     }
 

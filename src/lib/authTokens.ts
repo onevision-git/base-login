@@ -75,3 +75,18 @@ export function getTokenFromRequest(req: Request): string | null {
   }
   return null;
 }
+
+/**
+ * Resolve the signed-in user's email from the Request (via cookie JWT).
+ * Returns null if there's no valid session.
+ */
+export async function getEmailFromRequest(
+  req: Request,
+): Promise<string | null> {
+  const token = getTokenFromRequest(req);
+  if (!token) return null;
+  const result = await verifyJwtAndUser(token);
+  if (!result.ok) return null;
+  const email = result.user.email?.trim().toLowerCase();
+  return email || null;
+}

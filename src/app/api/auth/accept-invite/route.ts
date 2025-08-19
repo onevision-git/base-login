@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import { connect } from '@/lib/db';
 import User from '@/models/User';
 import Invite from '@/models/Invite';
+import Company from '@/models/Company';
 
 // Common JSON error helper
 function bad(status: number, error: string) {
@@ -40,11 +41,15 @@ type MinimalInviteDoc = mongoose.Document & {
   status?: 'PENDING' | 'ACCEPTED';
   invitedAt?: Date | null;
   acceptedAt?: Date | null;
+  role?: 'admin' | 'standard';
 };
 
 // Strongly-typed models based on the minimal shapes we touch here
 const UserModel = User as unknown as mongoose.Model<MinimalUserDoc>;
 const InviteModel = Invite as unknown as mongoose.Model<MinimalInviteDoc>;
+const CompanyModel = Company as unknown as mongoose.Model<
+  mongoose.Document & { maxUsers?: number }
+>;
 
 // Handle POST from the Accept Invite form
 export async function POST(req: Request) {
@@ -81,7 +86,7 @@ export async function POST(req: Request) {
     return bad(400, 'Password must be at least 8 characters');
   if (password !== confirm) return bad(400, 'Passwords do not match');
 
-  // Verify invite token
+  // Verify invite token (expiry, signature)
   let payload: InviteJwtPayload;
   try {
     payload = jwt.verify(token, JWT_SECRET) as InviteJwtPayload;
@@ -95,8 +100,26 @@ export async function POST(req: Request) {
   try {
     await connect();
 
-    const existing = await User.exists({
+    // 1) Ensure there is a PENDING invite in DB for this company+email
+    const invite = await InviteModel.findOne(
+      {
+        companyId: new mongoose.Types.ObjectId(payload.companyId),
+        email: { $regex: `^${escapeRegex(email)}$`, $options: 'i' },
+        status: { $ne: 'ACCEPTED' },
+      },
+      { role: 1, invitedAt: 1, status: 1 },
+    )
+      .lean()
+      .exec();
+
+    if (!invite) {
+      return bad(400, 'Invite not found or already accepted');
+    }
+
+    // 2) If the user already exists, mark invite accepted and redirect
+    const existing = await UserModel.exists({
       email: { $regex: `^${escapeRegex(email)}$`, $options: 'i' },
+      companyId: new mongoose.Types.ObjectId(payload.companyId),
     });
 
     if (existing) {
@@ -104,18 +127,45 @@ export async function POST(req: Request) {
       return NextResponse.redirect(new URL('/login?already=1', req.url));
     }
 
+    // 3) Seat-cap enforcement at accept time (defensive)
+    const [company, userCount] = await Promise.all([
+      CompanyModel.findById(new mongoose.Types.ObjectId(payload.companyId))
+        .select('maxUsers')
+        .lean()
+        .exec(),
+      UserModel.countDocuments({
+        companyId: new mongoose.Types.ObjectId(payload.companyId),
+      }).exec(),
+    ]);
+
+    const max = Number(company?.maxUsers ?? 0);
+    if (!(max > 0)) {
+      return bad(400, 'User limit reached for this company');
+    }
+    if (userCount >= max) {
+      return bad(400, 'User limit reached for this company');
+    }
+
+    // 4) Create the new user
     const passwordHash = await bcrypt.hash(password, 10);
+
+    const role: 'admin' | 'standard' =
+      (invite.role as 'admin' | 'standard' | undefined) ??
+      payload.role ??
+      'standard';
 
     const doc = new UserModel({
       email,
       passwordHash,
-      role: payload.role,
+      role,
       companyId: new mongoose.Types.ObjectId(payload.companyId),
       invitedBy: payload.inviterId,
       emailVerified: true,
     });
 
     await doc.save();
+
+    // 5) Mark the invite as accepted
     await markLatestInviteAccepted(payload.companyId, email);
 
     return NextResponse.redirect(new URL('/login?accepted=1', req.url));
