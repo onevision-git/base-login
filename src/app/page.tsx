@@ -21,7 +21,7 @@ export default function HomePage() {
             <div className="grid md:grid-cols-2 items-center gap-8">
               <div>
                 <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
-                  Ship SaaS faster with{' '}
+                  Now Ship SaaS faster with{' '}
                   <span className="text-primary">Base Login</span>
                 </h1>
                 <p className="mt-4 text-base-content/70 text-lg">
