@@ -2,7 +2,6 @@
 
 // Ensure Node.js runtime (needed for bcrypt/crypto)
 export const runtime = 'nodejs';
-// Force dynamic so Vercel builds a server function even if it thinks the route is static
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
@@ -15,17 +14,7 @@ import { getCollection } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 import type { IUser } from '@/models/User';
 
-// --- TEMP: GET for deploy verification (safe to keep; it returns no secrets) ---
-export async function GET() {
-  return NextResponse.json({
-    ok: true,
-    route: '/api/auth/password-reset/confirm',
-    resetEnabled: process.env.ENABLE_PASSWORD_RESET === 'true',
-  });
-}
-// ------------------------------------------------------------------------------
-
-// Helper to make consistent JSON responses (without leaking details)
+// Small helper for consistent JSON
 function json(
   status: number,
   body?: Record<string, unknown>,
@@ -40,6 +29,17 @@ function json(
   });
 }
 
+// --- GET: probe to verify deploy + flag ---
+export async function GET() {
+  const ENABLED = process.env.ENABLE_PASSWORD_RESET === 'true';
+  return json(200, {
+    ok: true,
+    route: '/api/auth/password-reset/confirm',
+    resetEnabled: ENABLED,
+  });
+}
+
+// --- POST: perform the reset ---
 export async function POST(req: Request) {
   const ENABLED = process.env.ENABLE_PASSWORD_RESET === 'true';
 
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
       {
         $set: {
           passwordHash,
-          password: passwordHash, // legacy compat
+          password: passwordHash, // legacy compatibility
           passwordUpdatedAt: now,
           updatedAt: now,
         },
@@ -105,6 +105,7 @@ export async function POST(req: Request) {
     );
   } catch (err) {
     console.error('[password-reset][confirm] error:', err);
+    // Do not leak details; remain idempotent
     return json(
       202,
       { message: 'If the token was valid, your password has been updated.' },
