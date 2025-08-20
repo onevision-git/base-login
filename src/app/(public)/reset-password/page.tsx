@@ -6,12 +6,11 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import AuthLayout from '../_components/AuthLayout';
 
-type ReqState = 'idle' | 'submitting' | 'success' | 'error';
-type CfmState = 'idle' | 'submitting' | 'success' | 'error';
+type UiState = 'idle' | 'submitting' | 'success' | 'error';
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="p-6 text-sm opacity-70">Loading…</div>}>
       <ResetPasswordContent />
     </Suspense>
   );
@@ -19,110 +18,86 @@ export default function ResetPasswordPage() {
 
 function ResetPasswordContent() {
   const sp = useSearchParams();
-  const token = sp.get('token');
+  const token = sp.get('token')?.trim() || '';
 
-  useEffect(() => {
-    document.title = token ? 'Set a new password' : 'Forgot Password';
-  }, [token]);
-
-  return token ? <ConfirmForm token={token} /> : <RequestForm />;
+  if (token) return <ConfirmForm token={token} />;
+  return <RequestForm />;
 }
 
 function RequestForm() {
   const [email, setEmail] = useState('');
-  const [state, setState] = useState<ReqState>('idle');
-  const [message, setMessage] = useState<string | null>(null);
+  const [state, setState] = useState<UiState>('idle');
+  const [message, setMessage] = useState<string>('');
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setState('submitting');
-    setMessage(null);
+    setMessage('');
 
     try {
       const res = await fetch('/api/auth/password-reset/request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
-      if (res.status === 202) {
+      const data = await safeJson(res);
+      if (res.ok) {
         setState('success');
         setMessage(
-          'If an account exists for that email, we’ve sent a reset link. Please check your inbox.',
-        );
-      } else if (res.status === 404) {
-        setState('error');
-        setMessage(
-          'Password reset is currently unavailable. Please try again later or contact support.',
+          data?.message || 'If that email exists, a reset link has been sent.',
         );
       } else {
-        const text = await res.text();
         setState('error');
-        setMessage(text || 'Something went wrong. Please try again.');
+        setMessage(data?.error || 'Unable to send reset link.');
       }
     } catch {
       setState('error');
-      setMessage('Network error. Please check your connection and try again.');
+      setMessage('Network error. Please try again.');
     }
   }
 
-  const disabled = state === 'submitting';
-
   return (
-    <AuthLayout
-      title="Forgot your password?"
-      subtitle="Enter your email address and we’ll send you a link to reset your password."
-      belowCard={
-        <div className="flex items-center justify-between text-sm">
-          <Link href="/login" className="link link-hover">
-            Back to login
-          </Link>
-          <Link href="/signup" className="link link-hover">
-            Create an account
-          </Link>
-        </div>
-      }
-    >
-      <form onSubmit={onSubmit} className="auth-form" noValidate>
+    <AuthLayout title="Reset your password">
+      <form onSubmit={onSubmit} className="space-y-4">
         <div className="form-control">
-          <label htmlFor="email" className="label">
-            <span className="label-text">Email address</span>
+          <label className="label">
+            <span className="label-text">Email</span>
           </label>
           <input
-            id="email"
             type="email"
-            autoFocus
             required
             autoComplete="email"
-            className="input input-bordered"
-            placeholder="you@example.com"
+            className="input input-bordered w-full"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={disabled}
+            disabled={state === 'submitting' || state === 'success'}
           />
         </div>
 
-        <div className="form-control mt-6">
-          <button
-            type="submit"
-            className={`btn btn-primary ${disabled ? 'loading' : ''}`}
-            disabled={disabled}
-            aria-disabled={disabled}
-          >
-            {state === 'submitting' ? 'Sending…' : 'Send reset link'}
-          </button>
-        </div>
+        <button
+          type="submit"
+          className={`btn btn-primary ${state === 'submitting' ? 'loading' : ''}`}
+          disabled={!email || state === 'submitting' || state === 'success'}
+        >
+          Send reset link
+        </button>
 
         {message && (
           <div
-            role="status"
-            className={`alert mt-4 ${
+            className={`alert ${
               state === 'success' ? 'alert-success' : 'alert-error'
             }`}
           >
             <span>{message}</span>
           </div>
         )}
+
+        <div className="pt-2">
+          <Link className="link" href="/login">
+            Back to login
+          </Link>
+        </div>
       </form>
     </AuthLayout>
   );
@@ -130,104 +105,90 @@ function RequestForm() {
 
 function ConfirmForm({ token }: { token: string }) {
   const [newPassword, setNewPassword] = useState('');
-  const [state, setState] = useState<CfmState>('idle');
-  const [message, setMessage] = useState<string | null>(null);
+  const [state, setState] = useState<UiState>('idle');
+  const [message, setMessage] = useState<string>('');
 
-  const tooShort = newPassword.length > 0 && newPassword.length < 8;
+  // Optional UX guard: tiny check to avoid empty token submits
+  useEffect(() => {
+    if (!token) {
+      setState('error');
+      setMessage('Missing or invalid reset token.');
+    }
+  }, [token]);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setState('submitting');
-    setMessage(null);
+    setMessage('');
 
     try {
       const res = await fetch('/api/auth/password-reset/confirm', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token, newPassword }),
       });
 
-      if (res.status === 202) {
+      const data = await safeJson(res);
+
+      // Your API returns 202 Accepted on success
+      if (res.status === 202 || res.ok) {
         setState('success');
-        setMessage('Your password has been updated. You can now sign in.');
-      } else if (res.status === 404) {
-        setState('error');
         setMessage(
-          'Password reset is currently unavailable. Please try again later.',
+          data?.message ||
+            'Your password has been updated. You can now sign in.',
         );
-      } else if (res.status === 422) {
-        setState('error');
-        setMessage('Password must be at least 8 characters.');
-      } else if (res.status === 400) {
-        const text = await res.text();
-        setState('error');
-        setMessage(text || 'Invalid request. Please re-open the reset link.');
       } else {
-        const text = await res.text();
         setState('error');
-        setMessage(text || 'Something went wrong. Please try again.');
+        setMessage(data?.error || 'Password reset failed.');
       }
     } catch {
       setState('error');
-      setMessage('Network error. Please check your connection and try again.');
+      setMessage('Network error. Please try again.');
     }
   }
 
-  const disabled = state === 'submitting';
-
   return (
-    <AuthLayout
-      title="Set a new password"
-      subtitle="Enter a new password for your account. Password must be at least 8 characters."
-      belowCard={
-        <div className="flex items-center justify-between text-sm">
-          <Link href="/login" className="link link-hover">
-            Back to login
-          </Link>
-          <Link href="/signup" className="link link-hover">
-            Create an account
-          </Link>
-        </div>
-      }
-    >
-      <form onSubmit={onSubmit} className="auth-form" noValidate>
+    <AuthLayout title="Choose a new password">
+      <form onSubmit={onSubmit} className="space-y-4">
+        <input type="hidden" name="token" value={token} readOnly />
+
         <div className="form-control">
-          <label htmlFor="new-password" className="label">
+          <label className="label">
             <span className="label-text">New password</span>
           </label>
           <input
-            id="new-password"
             type="password"
             required
+            minLength={8}
             autoComplete="new-password"
-            className={`input input-bordered ${tooShort ? 'input-error' : ''}`}
-            placeholder="********"
+            className="input input-bordered w-full"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            disabled={disabled}
+            disabled={state === 'submitting' || state === 'success'}
           />
-          {tooShort && (
-            <p className="text-error text-sm mt-1">
-              Password must be at least 8 characters.
-            </p>
-          )}
+          <label className="label">
+            <span className="label-text-alt">
+              Must be at least 8 characters.
+            </span>
+          </label>
         </div>
 
-        <div className="form-control mt-6">
-          <button
-            type="submit"
-            className={`btn btn-primary ${disabled ? 'loading' : ''}`}
-            disabled={disabled || tooShort}
-            aria-disabled={disabled || tooShort}
-          >
-            {state === 'submitting' ? 'Updating…' : 'Update password'}
-          </button>
-        </div>
+        <button
+          type="submit"
+          className={`btn btn-primary ${state === 'submitting' ? 'loading' : ''}`}
+          disabled={
+            !token ||
+            newPassword.length < 8 ||
+            state === 'submitting' ||
+            state === 'success'
+          }
+        >
+          Update password
+        </button>
 
         {message && (
           <div
-            role="status"
-            className={`alert mt-4 ${
+            className={`alert ${
               state === 'success' ? 'alert-success' : 'alert-error'
             }`}
           >
@@ -245,4 +206,14 @@ function ConfirmForm({ token }: { token: string }) {
       </form>
     </AuthLayout>
   );
+}
+
+// Helper that safely reads JSON (handles 204/empty)
+async function safeJson(res: Response) {
+  try {
+    const text = await res.text();
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return {};
+  }
 }
