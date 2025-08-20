@@ -1,5 +1,8 @@
 // File: src/app/api/auth/password-reset/confirm/route.ts
 
+// Ensure Node.js runtime (needed for bcrypt/crypto)
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import {
   verifyResetToken,
