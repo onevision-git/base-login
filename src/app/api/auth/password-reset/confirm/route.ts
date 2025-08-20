@@ -2,6 +2,8 @@
 
 // Ensure Node.js runtime (needed for bcrypt/crypto)
 export const runtime = 'nodejs';
+// Force dynamic so Vercel builds a server function even if it thinks the route is static
+export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import {
@@ -12,6 +14,16 @@ import {
 import { getCollection } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 import type { IUser } from '@/models/User';
+
+// --- TEMP: GET for deploy verification (safe to keep; it returns no secrets) ---
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    route: '/api/auth/password-reset/confirm',
+    resetEnabled: process.env.ENABLE_PASSWORD_RESET === 'true',
+  });
+}
+// ------------------------------------------------------------------------------
 
 // Helper to make consistent JSON responses (without leaking details)
 function json(
@@ -72,7 +84,7 @@ export async function POST(req: Request) {
       {
         $set: {
           passwordHash,
-          password: passwordHash,
+          password: passwordHash, // legacy compat
           passwordUpdatedAt: now,
           updatedAt: now,
         },
