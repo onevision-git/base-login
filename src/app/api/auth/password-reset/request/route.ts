@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { createResetToken } from '@/lib/passwordReset';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
 
 // Always return 202 to avoid leaking whether an email exists.
 // Log internal errors but never surface them to the client.
@@ -11,11 +12,23 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
+type RequestBody = {
+  email?: string;
+};
+
 export async function POST(req: Request) {
-  // Required env at runtime (no top-level reads elsewhere)
+  // Rate-limit by IP (in-memory; swap for Redis/Upstash in production)
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+  const rate = checkRateLimit(`pwreset:request:${ip}`, 5, 15 * 60 * 1000); // 5 requests / 15min
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { message: 'Too many requests. Please try again later.' },
+      { status: 429, headers: rateLimitHeaders(rate) },
+    );
+  }
+
   const APP_URL = process.env.NEXT_PUBLIC_APP_URL || '';
   if (!APP_URL) {
-    // If misconfigured, respond as if OK but include a header so we can spot it.
     return NextResponse.json(
       {
         message:
@@ -23,7 +36,10 @@ export async function POST(req: Request) {
       },
       {
         status: 202,
-        headers: { 'x-reset-misconfigured': 'NEXT_PUBLIC_APP_URL missing' },
+        headers: {
+          'x-reset-misconfigured': 'NEXT_PUBLIC_APP_URL missing',
+          ...rateLimitHeaders(rate),
+        },
       },
     );
   }
@@ -33,31 +49,30 @@ export async function POST(req: Request) {
   if (!ctype.includes('application/json')) {
     return NextResponse.json(
       { error: 'Content-Type must be application/json.' },
-      { status: 415 },
+      { status: 415, headers: rateLimitHeaders(rate) },
     );
   }
 
   // Parse & validate input
   let email = '';
   try {
-    const body = await req.json();
-    email = (body?.email ?? '').toString().trim().toLowerCase();
+    const body: RequestBody = await req.json();
+    email = (body.email ?? '').toString().trim().toLowerCase();
   } catch {
     // fall through
   }
 
   if (!email || !isValidEmail(email)) {
-    // Deliberately return 202 to avoid account enumeration
     return NextResponse.json(
       {
         message:
           'If an account exists for that email, we’ve sent a reset link.',
       },
-      { status: 202 },
+      { status: 202, headers: rateLimitHeaders(rate) },
     );
   }
 
-  // Core flow: create token & send email.
+  // Core flow: create token & send email
   try {
     const { token, expiresAt } = await createResetToken(email);
 
@@ -72,16 +87,14 @@ export async function POST(req: Request) {
       expiresAt,
     });
   } catch (e) {
-    // Log but do not leak details
     console.error('[password-reset/request] error:', e);
   }
 
-  // Always 202
   return NextResponse.json(
     {
       message: 'If an account exists for that email, we’ve sent a reset link.',
     },
-    { status: 202 },
+    { status: 202, headers: rateLimitHeaders(rate) },
   );
 }
 
