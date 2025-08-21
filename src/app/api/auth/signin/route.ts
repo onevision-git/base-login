@@ -69,6 +69,13 @@ export async function POST(req: Request) {
       );
     }
 
+    // ✅ NEW: record the successful login time (UTC) without blocking the response
+    // We await here once; it’s a single indexed update.
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { lastLoginAt: new Date() } },
+    ).exec();
+
     const token = jwt.sign(
       {
         userId: String(user._id),
@@ -91,8 +98,10 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7,
     });
     return res;
-  } catch (err) {
-    console.error('Signin error:', err);
+  } catch (err: unknown) {
+    // ESLint-safe error handling: narrow unknown to Error
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Signin error:', msg);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

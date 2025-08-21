@@ -48,3 +48,4 @@ git push origin v1.00                     # publish the tag
 # ==== 8) (Optional) Create a release branch for future hotfixes ====
 git branch -f release/v1.00
 git push -u origin release/v1.00
+```

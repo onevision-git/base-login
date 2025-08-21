@@ -1,6 +1,7 @@
 ﻿# Changelog
 
 ## v1.00 — Initial stable release
+
 - Base-Login app (Next.js 15) with email/password auth
 - Company + user + invite models; domain-guarded invites
 - Password reset (request/confirm), confirm email, session endpoints

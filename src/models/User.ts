@@ -1,3 +1,4 @@
+// File: src/models/User.ts
 import mongoose, { Schema, Model, Document } from 'mongoose';
 
 export interface IUser extends Document {
@@ -9,6 +10,8 @@ export interface IUser extends Document {
   role: 'admin' | 'standard';
   isMaster?: boolean;
   passwordUpdatedAt?: Date;
+  /** NEW: date/time of the most recent successful login (UTC); null until first login after this change */
+  lastLoginAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +55,11 @@ const UserSchema = new Schema<IUser>(
     passwordUpdatedAt: {
       type: Date,
       index: true,
+    },
+    // NEW FIELD: will be set on successful sign-in; defaults to null for existing users
+    lastLoginAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true },
