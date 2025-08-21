@@ -57,6 +57,10 @@ function fmt(iso?: string | null) {
   return Number.isNaN(d.getTime()) ? iso! : d.toLocaleString();
 }
 
+function domainOf(email: string): string {
+  return email.split('@')[1]?.toLowerCase() ?? '';
+}
+
 export default async function TeamPage() {
   // --- Auth ---
   const cookieStore = await cookies();
@@ -94,7 +98,7 @@ export default async function TeamPage() {
     createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : null,
   }));
 
-  // --- Load PENDING INVITES only ---
+  // --- Load PENDING INVITES only (scoped to this company) ---
   const inviteModel = Invite as unknown as Model<InviteLean>;
   const dbInvites = await inviteModel
     .find(
@@ -113,6 +117,12 @@ export default async function TeamPage() {
   }));
 
   const currentEmail = (payload.email || '').toLowerCase();
+  const inviterDomain = domainOf(currentEmail);
+
+  // Build pending emails list, filtered to inviter's domain (explicit + safe)
+  const pendingEmails = invites
+    .map((i) => i.email.toLowerCase())
+    .filter((e) => domainOf(e) === inviterDomain);
 
   return (
     <main className="px-4 py-10">
@@ -137,6 +147,7 @@ export default async function TeamPage() {
                 userCount={userCount}
                 maxUsers={maxUsers}
                 canInvite={canInvite}
+                pendingEmails={pendingEmails}
               />
             </div>
           </div>

@@ -2,12 +2,14 @@
 'use client';
 
 import React, { useState, FormEvent, useRef } from 'react';
-import { useRouter } from 'next/navigation'; // ⬅️ add this
+import { useRouter } from 'next/navigation';
 
 interface TeamInviteFormProps {
   userCount: number;
   maxUsers: number;
   canInvite: boolean;
+  /** Pending invite emails for this company & domain (lowercased preferred) */
+  pendingEmails: string[];
 }
 
 type Role = 'standard' | 'admin';
@@ -16,8 +18,9 @@ export default function TeamInviteForm({
   userCount,
   maxUsers,
   canInvite,
+  pendingEmails,
 }: TeamInviteFormProps) {
-  const router = useRouter(); // ⬅️ add this
+  const router = useRouter();
 
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('standard');
@@ -29,12 +32,18 @@ export default function TeamInviteForm({
   const [checking, setChecking] = useState(false);
   const [exists, setExists] = useState<boolean | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [pendingExists, setPendingExists] = useState<boolean>(false);
 
   // Prevent blur check from interfering with click/submit
   const submittingRef = useRef(false);
 
   const validateEmail = (value: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+  const hasPendingInvite = (value: string) => {
+    const v = value.trim().toLowerCase();
+    return pendingEmails.some((e) => e.toLowerCase() === v);
+  };
 
   async function checkUserExists(
     value: string,
@@ -45,6 +54,7 @@ export default function TeamInviteForm({
     if (updateState && !submittingRef.current) {
       setEmailError(null);
       setExists(null);
+      setPendingExists(false);
     }
 
     if (!trimmed) return null;
@@ -55,6 +65,18 @@ export default function TeamInviteForm({
       return null;
     }
 
+    // 1) Local: block if a pending invite already exists
+    const pending = hasPendingInvite(trimmed);
+    if (updateState && !submittingRef.current) {
+      setPendingExists(pending);
+      if (pending) {
+        setEmailError('An invite is already pending for this email.');
+        return null;
+      }
+    }
+    if (pending) return null;
+
+    // 2) Remote: check if the email is already a registered user
     try {
       if (updateState && !submittingRef.current) setChecking(true);
       const res = await fetch(
@@ -99,6 +121,14 @@ export default function TeamInviteForm({
       return;
     }
 
+    // Block if there is already a pending invite locally
+    if (hasPendingInvite(trimmed)) {
+      setPendingExists(true);
+      setEmailError('An invite is already pending for this email.');
+      submittingRef.current = false;
+      return;
+    }
+
     const existsNow = await checkUserExists(trimmed, false);
     if (existsNow === true) {
       setExists(true);
@@ -107,7 +137,9 @@ export default function TeamInviteForm({
       return;
     }
     if (existsNow === null) {
-      setMessage('Could not verify email right now. Please try again.');
+      if (!pendingExists) {
+        setMessage('Could not verify email right now. Please try again.');
+      }
       submittingRef.current = false;
       return;
     }
@@ -127,10 +159,9 @@ export default function TeamInviteForm({
         setEmail('');
         setRole('standard');
         setExists(null);
+        setPendingExists(false);
         setEmailError(null);
-
-        // 🔁 Make the /team page re-render so the new row shows up without manual refresh
-        router.refresh(); // ⬅️ the key line
+        router.refresh(); // refresh the table so the new pending email appears
       } else {
         setMessage(result.error || 'Failed to send invitation.');
       }
@@ -164,21 +195,29 @@ export default function TeamInviteForm({
                 setEmail(e.target.value);
                 setEmailError(null);
                 setExists(null);
+                setPendingExists(false);
                 setMessage(null);
               }}
               onBlur={() => void checkUserExists(email)}
               required
-              aria-invalid={Boolean(emailError) || exists === true}
+              aria-invalid={
+                Boolean(emailError) || exists === true || pendingExists
+              }
               aria-describedby="invite-email-help"
             />
             <p id="invite-email-help" className="text-xs min-h-5">
               {checking && <span className="text-gray-500">Checking…</span>}
-              {!checking && exists === true && (
+              {!checking && pendingExists && (
+                <span className="text-error">
+                  An invite is already pending for this email.
+                </span>
+              )}
+              {!checking && exists === true && !pendingExists && (
                 <span className="text-error">
                   This email is already registered.
                 </span>
               )}
-              {!checking && emailError && (
+              {!checking && emailError && !pendingExists && (
                 <span className="text-error">{emailError}</span>
               )}
             </p>
@@ -186,7 +225,6 @@ export default function TeamInviteForm({
 
           {/* Role */}
           <div className="form-control mt-2 space-y-1">
-            {/* mt-4 → mt-2 to tighten */}
             <label htmlFor="invite-role" className="label p-0">
               <span className="label-text text-sm">Role</span>
             </label>
@@ -209,6 +247,7 @@ export default function TeamInviteForm({
               disabled={
                 loading ||
                 exists === true ||
+                pendingExists ||
                 Boolean(emailError) ||
                 !email.trim()
               }

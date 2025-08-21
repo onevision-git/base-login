@@ -67,7 +67,7 @@ export async function POST(req: Request) {
   // 2) Lazy-load modules that may read env at import time
   const [
     { getInviteInfo },
-    { sendInviteEmail }, // ⟵ CHANGED: use invite template with inviter line
+    { sendInviteEmail },
     { connect },
     { default: User },
     { default: Invite },
@@ -118,16 +118,42 @@ export async function POST(req: Request) {
     return bad(400, 'Email domain must match your company domain.');
   }
 
-  // 6) Prevent inviting an already registered user (case-insensitive)
+  // Optional: block self-invite (nice UX guard)
+  if (inviteeEmail.toLowerCase() === inviterEmail.toLowerCase()) {
+    return bad(400, 'You cannot invite your own email.');
+  }
+
+  // 6) Pre-checks (connect once)
   try {
     await connect();
+  } catch (err: unknown) {
+    console.error('DB connect error:', err);
+    return bad(500, 'Failed to validate invite.');
+  }
 
+  // 6a) Prevent inviting an already registered user (case-insensitive)
+  try {
     const exists = await UserModel.exists({
       email: { $regex: `^${escapeRegex(inviteeEmail)}$`, $options: 'i' },
     });
     if (exists) return bad(409, 'This email is already registered.');
-  } catch (e) {
-    console.error('Invite pre-check error:', e);
+  } catch (err: unknown) {
+    console.error('Invite pre-check (user exists) error:', err);
+    return bad(500, 'Failed to validate invite.');
+  }
+
+  // ✅ 6b) NEW: Prevent duplicate *pending* invite for same company + email
+  try {
+    const existingPending = await InviteModel.exists({
+      companyId: new mongoose.Types.ObjectId(payload.companyId),
+      email: { $regex: `^${escapeRegex(inviteeEmail)}$`, $options: 'i' },
+      status: 'PENDING',
+    });
+    if (existingPending) {
+      return bad(409, 'An invite is already pending for this email.');
+    }
+  } catch (err: unknown) {
+    console.error('Invite pre-check (pending exists) error:', err);
     return bad(500, 'Failed to validate invite.');
   }
 
@@ -155,8 +181,8 @@ export async function POST(req: Request) {
     if (usersCount + pendingInvites >= max) {
       return bad(400, 'User limit reached for this company');
     }
-  } catch (e) {
-    console.error('Seat-cap check error:', e);
+  } catch (err: unknown) {
+    console.error('Seat-cap check error:', err);
     return bad(500, 'Failed to validate seat availability.');
   }
 
@@ -173,15 +199,13 @@ export async function POST(req: Request) {
       { expiresIn: '24h' },
     );
 
-    // Use the updated invite email (adds "inviter has invited you..." line)
     await sendInviteEmail({
       to: inviteeEmail,
       token: inviteToken,
-      inviterEmail, // ⟵ NEW: drives the copy change
-      // companyName: 'Base Login', // optional: pass if you want brand in subject
+      inviterEmail,
     });
 
-    // 9) Persist the invite
+    // 9) Persist the invite (non-fatal if this fails; the email has been sent)
     try {
       await InviteModel.create({
         companyId: new mongoose.Types.ObjectId(payload.companyId),
@@ -192,14 +216,14 @@ export async function POST(req: Request) {
         acceptedAt: null,
         role,
       });
-    } catch (e) {
-      console.error('[invite] create error:', e);
-      // Non-fatal: email already sent
+    } catch (err: unknown) {
+      console.error('[invite] create error:', err);
+      // Swallow: we already sent the email; admin can resend if needed
     }
 
     return NextResponse.json({ success: true });
-  } catch (e) {
-    console.error('Invite dispatch error:', e);
+  } catch (err: unknown) {
+    console.error('Invite dispatch error:', err);
     return bad(500, 'Failed to send invitation.');
   }
 }
