@@ -1,7 +1,10 @@
 // File: src/app/api/auth/signin/route.ts
 
+// Ensure Node.js runtime (not Edge) for faster bcrypt/JWT + warm DB reuse
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 import { connect } from '../../../../lib/db';

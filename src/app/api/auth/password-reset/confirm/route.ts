@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import {
   verifyResetToken,
   consumeResetToken,
@@ -15,6 +15,9 @@ import {
 import { getCollection } from '@/lib/mongodb';
 import type { IUser } from '@/models/User';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rateLimit';
+
+// 🔒 Lock bcrypt cost factor for new hashes (consistent with signup/invite)
+const SALT_ROUNDS = 10;
 
 // Small JSON helper (no detail leakage; disables caching)
 function json(
@@ -113,9 +116,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2) Hash & update user password
+    // 2) Hash & update user password (now using SALT_ROUNDS = 10)
     const emailLc = verified.email.toLowerCase();
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
 
     const users = await getCollection<IUser>('users');
     const now = new Date();

@@ -1,8 +1,11 @@
 // File: src/app/api/auth/accept-invite/route.ts
 
+// Ensure Node.js runtime for native bcrypt/JWT + warm DB reuse
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 
 import { connect } from '@/lib/db';
@@ -10,6 +13,9 @@ import User from '@/models/User';
 import Invite from '@/models/Invite';
 import Company from '@/models/Company';
 import { sendAdminInviteAcceptedAlert } from '@/lib/adminAlerts'; // ⟵ NEW
+
+// Lock bcrypt cost factor for new hashes (consistent with signup/reset)
+const SALT_ROUNDS = 10;
 
 // Common JSON error helper
 function bad(status: number, error: string) {
@@ -162,7 +168,7 @@ export async function POST(req: Request) {
     }
 
     // 4) Create the new user
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     const role: 'admin' | 'standard' =
       (invite.role as 'admin' | 'standard' | undefined) ??

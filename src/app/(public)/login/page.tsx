@@ -1,7 +1,7 @@
 // src/app/(public)/login/page.tsx
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthLayout from '../_components/AuthLayout';
 
@@ -13,6 +13,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Track/cancel in‑flight sign-in
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   // Forgot-password state
   const supportEmail =
@@ -36,6 +42,7 @@ export default function LoginPage() {
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return; // hard block double-submit
     setError(null);
 
     const emailNorm = (email || '').trim().toLowerCase();
@@ -49,33 +56,57 @@ export default function LoginPage() {
     try {
       setSubmitting(true);
 
+      // Cancel any stale request before starting a new one
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       const res = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email: emailNorm, password: passwordVal }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
         // Surface the exact server message if present
         let msg = 'Sign in failed. Please check your details and try again.';
         try {
-          const data = await res.json();
-          if (typeof data?.error === 'string' && data.error.trim()) {
-            msg = data.error;
+          const data: unknown = await res.json();
+          if (
+            data &&
+            typeof data === 'object' &&
+            'error' in data &&
+            typeof (data as { error?: unknown }).error === 'string' &&
+            (data as { error: string }).error.trim()
+          ) {
+            msg = (data as { error: string }).error;
           }
         } catch {
           // ignore parse errors
         }
         setError(msg);
+        setSubmitting(false); // release the button on error only
         return;
       }
 
-      // Success
-      router.push('/dashboard');
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
+      // Success: keep the button showing "Signing in…" until navigation completes.
+      router.replace('/dashboard');
+
+      // Optional safety net: if navigation stalls in dev, show a gentle hint.
+      setTimeout(() => {
+        setError((prev) => prev ?? 'Still working…');
+      }, 5000);
+    } catch (err: unknown) {
+      // If the fetch was aborted (re-submit or unmount), don't show an error
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+
+      if (err instanceof Error) {
+        setError(err.message || 'Something went wrong. Please try again.');
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
       setSubmitting(false);
     }
   };
@@ -102,10 +133,14 @@ export default function LoginPage() {
 
       // If the real endpoint is enabled, we expect 202.
       if (res1.status === 202) {
-        const data = await res1.json().catch(() => ({}));
+        const data: unknown = await res1.json().catch(() => ({}));
         const msg =
-          typeof data?.message === 'string' && data.message.trim()
-            ? data.message
+          data &&
+          typeof data === 'object' &&
+          'message' in data &&
+          typeof (data as { message?: unknown }).message === 'string' &&
+          (data as { message: string }).message.trim()
+            ? (data as { message: string }).message
             : 'If an account exists for that email, we’ve sent a reset link.';
         setFpInfo(msg);
         return;
@@ -120,10 +155,14 @@ export default function LoginPage() {
         });
 
         // Placeholder usually returns 501 with a message
-        const data2 = await res2.json().catch(() => ({}));
+        const data2: unknown = await res2.json().catch(() => ({}));
         const serverMsg =
-          typeof data2?.message === 'string' && data2.message.trim()
-            ? data2.message
+          data2 &&
+          typeof data2 === 'object' &&
+          'message' in data2 &&
+          typeof (data2 as { message?: unknown }).message === 'string' &&
+          (data2 as { message: string }).message.trim()
+            ? (data2 as { message: string }).message
             : null;
 
         const notConfiguredHint =
@@ -141,8 +180,12 @@ export default function LoginPage() {
       const fallbackMsg =
         'If this email exists, you will receive reset instructions when password resets are enabled.';
       setFpInfo(fallbackMsg);
-    } catch {
-      setFpError('Something went wrong. Please try again.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setFpError(err.message || 'Something went wrong. Please try again.');
+      } else {
+        setFpError('Something went wrong. Please try again.');
+      }
     } finally {
       setFpSubmitting(false);
     }
@@ -174,7 +217,12 @@ export default function LoginPage() {
           - space-y-4 on the form for consistent vertical gaps
           - label with py-0 mb-1 for tight label→input spacing
           - inputs set to w-full for alignment */}
-      <form onSubmit={onSubmit} noValidate className="auth-form space-y-4">
+      <form
+        onSubmit={onSubmit}
+        noValidate
+        className="auth-form space-y-4"
+        aria-busy={submitting}
+      >
         {/* Email */}
         <div className="form-control">
           <label htmlFor="email" className="label py-0 mb-1">
@@ -189,6 +237,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={submitting}
           />
         </div>
 
@@ -206,6 +255,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={submitting}
           />
         </div>
 
@@ -220,8 +270,11 @@ export default function LoginPage() {
         <div className="form-control">
           <button
             type="submit"
-            className="btn btn-primary w-full"
+            className={`btn btn-primary w-full${submitting ? ' btn-disabled' : ''}`}
             disabled={submitting}
+            aria-disabled={submitting}
+            aria-live="polite"
+            data-loading={submitting ? 'true' : 'false'}
           >
             {submitting ? 'Signing in…' : 'Sign in'}
           </button>
@@ -253,6 +306,7 @@ export default function LoginPage() {
               onChange={(e) => setForgotEmail(e.target.value)}
               required
               autoFocus
+              disabled={fpSubmitting}
             />
 
             {/* Single banner: prefer info; show red only for validation/network */}

@@ -1,7 +1,10 @@
 // File: src/app/api/auth/signup/route.ts
 
+// Ensure Node.js runtime for native bcrypt/JWT + warm DB reuse
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
 
@@ -15,6 +18,9 @@ type SignupBody = {
   password: string;
   orgName: string;
 };
+
+// Lock bcrypt cost factor for new hashes
+const SALT_ROUNDS = 10;
 
 export async function POST(req: Request) {
   // Resolve env at runtime (not at import time)
@@ -75,7 +81,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    // 🔒 Consistent, performant bcrypt cost for all new hashes
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     const user = await User.create({
       email,
@@ -89,7 +96,9 @@ export async function POST(req: Request) {
     const token = jwt.sign(
       { email: user.email, userId: user._id },
       JWT_SECRET,
-      { expiresIn: '24h' },
+      {
+        expiresIn: '24h',
+      },
     );
 
     const confirmUrl = `${BASE}/confirm?token=${encodeURIComponent(token)}`;
@@ -97,8 +106,6 @@ export async function POST(req: Request) {
     // ─────────────────────────────────────────────────────────────────────
     // Styled email path (shared template) when env is fully configured
     // ─────────────────────────────────────────────────────────────────────
-    // We use the shared "magic-link" template IF NEXT_PUBLIC_APP_URL exists,
-    // otherwise we keep your original simple HTML / console log fallback.
     if (resend) {
       if (APP_URL_ENV && APP_URL_ENV.trim()) {
         try {
