@@ -1,0 +1,19 @@
+{
+  "name": "@onevision/base-login-auth",
+  "version": "1.0.0",
+  "main": "src/service.ts",
+  "types": "src/service.ts",
+  "exports": {
+    ".": {
+      "import": "./src/service.ts",
+      "require": "./src/service.ts"
+    }
+  },
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.3.1"
+  }
+}
