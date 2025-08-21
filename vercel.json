@@ -1,0 +1,9 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "feature/frontend-login-ui": true,
+      "release/*": false
+    }
+  }
+}
