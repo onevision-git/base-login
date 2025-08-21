@@ -7,7 +7,7 @@ export default function DashboardFooter() {
   return (
     <BaseFooter
       variant="dashboard"
-      owner="Base Login"
+      // rely on BaseFooter default: NEXT_PUBLIC_ORG_NAME
       note="All rights reserved."
       // links={[ { href: '/dashboard/settings', label: 'Settings' } ]}
     />

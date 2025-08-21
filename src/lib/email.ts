@@ -7,6 +7,7 @@ import { Resend } from 'resend';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'no-reply@example.com';
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Your App';
+const ORG_NAME = process.env.NEXT_PUBLIC_ORG_NAME || 'Your Company';
 const SUPPORT_EMAIL =
   process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@example.com';
 
@@ -114,7 +115,7 @@ function emailLayout(opts: {
           </tr>
         </table>
         <p style="margin:16px 0 0 0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:11px; color:#9ca3af;">
-          © ${new Date().getFullYear()} ${escapeHtml(APP_NAME)}. All rights reserved.
+          © ${new Date().getFullYear()} ${escapeHtml(ORG_NAME)}. All rights reserved.
         </p>
       </td>
     </tr>
@@ -131,6 +132,7 @@ export async function sendPasswordResetEmail(opts: {
 }) {
   const { to, resetUrl, expiresAt } = opts;
 
+  // Keep APP_NAME in subject/preview for product branding; footer uses ORG_NAME
   const subject = `Reset your ${APP_NAME} password`;
   const preview = `Use this link to reset your ${APP_NAME} password${
     expiresAt ? ` (expires ${expiresAt.toISOString()})` : ''

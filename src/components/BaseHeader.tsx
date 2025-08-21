@@ -11,8 +11,9 @@ type NavLink = {
 };
 
 type BaseHeaderProps = {
-  /** App name shown next to the logo */
-  appName: string;
+  /** App name shown next to the logo.
+   *  Defaults to NEXT_PUBLIC_APP_NAME (or "App"). */
+  appName?: string;
   /** Where the app name links to (e.g., "/" or "/dashboard") */
   appHref: string;
   /** Logo URL in /public (e.g., "/logo-placeholder.jpg") */
@@ -26,7 +27,7 @@ type BaseHeaderProps = {
 };
 
 export default function BaseHeader({
-  appName,
+  appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'App',
   appHref,
   logoSrc = '/logo-placeholder.jpg',
   logoAlt = 'App Logo',
@@ -35,7 +36,7 @@ export default function BaseHeader({
 }: BaseHeaderProps) {
   return (
     <header className="w-full bg-base-200 border-b border-base-300 shadow flex items-center justify-between px-6 py-3">
-      {/* Left: Logo + app name (matches public header styling) */}
+      {/* Left: Logo + app name */}
       <div className="flex items-center gap-2">
         <Link href={appHref} aria-label={`${appName} home`}>
           <Image

@@ -5,9 +5,11 @@ import BaseHeader from './BaseHeader';
 import LogoutButton from './LogoutButton';
 
 export default function DashboardHeader() {
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'App';
+
   return (
     <BaseHeader
-      appName="SaaS Base Login"
+      appName={appName}
       appHref="/dashboard"
       links={[
         { href: '/dashboard', label: 'Home' },

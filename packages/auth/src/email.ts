@@ -10,7 +10,8 @@ function requireEnv(
     | 'RESEND_API_KEY'
     | 'EMAIL_FROM'
     | 'NEXT_PUBLIC_APP_URL'
-    | 'NEXT_PUBLIC_APP_NAME',
+    | 'NEXT_PUBLIC_APP_NAME'
+    | 'NEXT_PUBLIC_ORG_NAME',
 ): string {
   const v = process.env[name];
   if (!v || !v.trim())
@@ -41,6 +42,7 @@ function button(href: string, label: string) {
 function layout(opts: { title: string; bodyHtml: string; preview?: string }) {
   const { title, bodyHtml, preview } = opts;
   const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Your App';
+  const orgName = process.env.NEXT_PUBLIC_ORG_NAME || 'Your Company';
 
   return `
 <!doctype html>
@@ -79,14 +81,14 @@ function layout(opts: { title: string; bodyHtml: string; preview?: string }) {
           <tr>
             <td style="padding:16px 24px; border-top:1px solid #e5e7eb;">
               <p style="margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.6; color:#6b7280;">
-                You’re receiving this email because it was requested from the app.
+                You’re receiving this email because it was requested from ${escapeHtml(appName)}.
                 If you didn’t expect this, you can ignore it or contact support.
               </p>
             </td>
           </tr>
         </table>
         <p style="margin:16px 0 0 0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:11px; color:#9ca3af;">
-          © ${new Date().getFullYear()} ${escapeHtml(appName)}. All rights reserved.
+          © ${new Date().getFullYear()} ${escapeHtml(orgName)}. All rights reserved.
         </p>
       </td>
     </tr>
@@ -121,9 +123,12 @@ export async function sendMagicLink(to: string, link: string) {
   const resend = await getResendClient();
   const from = requireEnv('EMAIL_FROM');
   const appUrl = withoutTrailingSlash(requireEnv('NEXT_PUBLIC_APP_URL'));
+
   const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Your App';
+  const orgName = process.env.NEXT_PUBLIC_ORG_NAME || 'Your Company';
 
   const safe = escapeHtml(link);
+  // Subject should use the organisation name (legal entity)
   const subject = `Confirm your ${appName} email`;
   const preview = `Click the button to confirm your email and continue.`;
 
@@ -139,7 +144,9 @@ export async function sendMagicLink(to: string, link: string) {
         <a href="${safe}" style="color:#2563eb; text-decoration:none;">${safe}</a>
       </p>
       <p style="margin:16px 0 0 0; font-size:13px; color:#334155;">
-        After confirming, you’ll be redirected to your dashboard: ${escapeHtml(appUrl)}/(app)/dashboard
+        After confirming, you’ll be redirected to your dashboard: ${escapeHtml(
+          appUrl,
+        )}/(app)/dashboard
       </p>
     </div>
   `.trim();
@@ -169,24 +176,27 @@ export async function sendMagicLink(to: string, link: string) {
 }
 
 /**
- * Invite email (now supports optional inviterEmail for copy).
+ * Invite email (supports optional inviterEmail for copy).
  */
 export async function sendInviteEmail(params: {
   to: string;
   token: string;
   companyName?: string;
-  inviterEmail?: string; // NEW (optional)
+  inviterEmail?: string; // optional
 }) {
   const resend = await getResendClient();
   const from = requireEnv('EMAIL_FROM');
   const appUrl = withoutTrailingSlash(requireEnv('NEXT_PUBLIC_APP_URL'));
-  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Base Login';
+
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Your App';
+  const orgName = process.env.NEXT_PUBLIC_ORG_NAME || 'Your Company';
 
   const { to, token, companyName, inviterEmail } = params;
 
   const link = `${appUrl}/accept-invite?token=${encodeURIComponent(token)}`;
   const safeLink = escapeHtml(link);
 
+  // If companyName provided (tenant-level), prefer it; otherwise use the organisation name.
   const subject = companyName
     ? `You’re invited to join ${companyName}`
     : `You’re invited to join ${appName}`;
@@ -202,9 +212,6 @@ export async function sendInviteEmail(params: {
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#0f172a; line-height:1.6;">
       <h2 style="margin:0 0 12px 0; font-size:20px; color:#111827;">You're invited</h2>
       ${invitedByLine}
-      <p style="margin:0 0 12px">
-        You’ve been invited${companyName ? ` to join <strong>${escapeHtml(companyName)}</strong>` : ''}.
-      </p>
       <p style="margin:0 0 16px">Click the button below to accept the invite and set your password.</p>
       <p style="margin:16px 0;">
         ${button(safeLink, 'Accept invite')}
@@ -214,7 +221,7 @@ export async function sendInviteEmail(params: {
         <a href="${safeLink}" style="color:#2563eb; text-decoration:none;">${safeLink}</a>
       </p>
       <p style="margin:16px 0 0 0; font-size:13px; color:#334155;">
-        After accepting, you’ll be redirected to the sign‑in page.
+        After accepting, you’ll be redirected to the sign-in page.
       </p>
     </div>
   `.trim();
@@ -242,6 +249,57 @@ export async function sendInviteEmail(params: {
   });
 
   console.log('[sendInviteEmail] sent', {
+    to,
+    id: getEmailId(response),
+  });
+}
+
+/**
+ * Admin alert: new sign-up notification.
+ * Subject will be: "New sign-up by <email> from <ORG_NAME>"
+ */
+export async function sendAdminNewSignupAlert(params: {
+  to: string;
+  newUserEmail: string;
+}) {
+  const resend = await getResendClient();
+  const from = requireEnv('EMAIL_FROM');
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'Your App';
+  const orgName = process.env.NEXT_PUBLIC_ORG_NAME || 'Your Company';
+  const { to, newUserEmail } = params;
+
+  // Use organisation for the source attribution in subject
+  const subject = `New sign-up by ${newUserEmail} from ${orgName}`;
+  const preview = subject;
+
+  const bodyHtml = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#0f172a; line-height:1.6;">
+      <h2 style="margin:0 0 12px 0; font-size:18px; color:#111827;">New sign-up</h2>
+      <p style="margin:0 0 12px;">A new user has signed up to <strong>${escapeHtml(
+        appName,
+      )}</strong>.</p>
+      <p style="margin:0 0 12px;"><strong>Email:</strong> ${escapeHtml(
+        newUserEmail,
+      )}</p>
+    </div>
+  `.trim();
+
+  const html = layout({ title: subject, bodyHtml, preview });
+  const text = [
+    `New sign-up`,
+    `App: ${appName}`,
+    `Email: ${newUserEmail}`,
+  ].join('\n');
+
+  const response = await resend.emails.send({
+    from,
+    to,
+    subject,
+    html,
+    text,
+  });
+
+  console.log('[sendAdminNewSignupAlert] sent', {
     to,
     id: getEmailId(response),
   });

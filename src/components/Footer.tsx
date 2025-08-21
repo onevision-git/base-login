@@ -7,7 +7,7 @@ export default function Footer() {
   return (
     <BaseFooter
       variant="public"
-      owner="Base Login"
+      // rely on BaseFooter default: NEXT_PUBLIC_ORG_NAME
       note="All rights reserved."
       // links={[
       //   { href: '/privacy', label: 'Privacy' },

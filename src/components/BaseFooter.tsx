@@ -9,7 +9,8 @@ type NavLink = {
 };
 
 type BaseFooterProps = {
-  /** Optional copyright owner text (e.g., "Base Login") */
+  /** Optional copyright owner text (e.g., "One Vision Ltd").
+   *  Defaults to NEXT_PUBLIC_ORG_NAME (or "Your Company"). */
   owner?: string;
   /** Optional suffix text after the owner (e.g., "All rights reserved.") */
   note?: string;
@@ -22,7 +23,7 @@ type BaseFooterProps = {
 };
 
 export default function BaseFooter({
-  owner = 'Base Login',
+  owner = process.env.NEXT_PUBLIC_ORG_NAME ?? 'Your Company',
   note = 'All rights reserved.',
   links = [],
   className = '',
