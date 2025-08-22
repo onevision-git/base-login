@@ -1,6 +1,6 @@
 # Maintenance Guide (Base-Login & cloned apps like Base CRM)
 
-This document explains the lightweight workflow to keep *shared* auth/lib/model code in sync between Base-Login and any apps cloned from it (e.g., Base CRM).
+This document explains the lightweight workflow to keep _shared_ auth/lib/model code in sync between Base-Login and any apps cloned from it (e.g., Base CRM).
 
 ---
 
@@ -105,3 +105,4 @@ git am .\patches\*.patch
 # Cherry-pick from another remote
 git fetch upstream
 git cherry-pick <sha>
+```

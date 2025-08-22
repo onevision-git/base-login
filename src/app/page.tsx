@@ -22,7 +22,7 @@ export default function HomePage() {
               <div>
                 <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
                   Ship SaaS faster with{' '}
-                  <span className="text-primary">Base Login</span>
+                  <span className="text-primary">Base Login v1.02</span>
                 </h1>
                 <p className="mt-4 text-base-content/70 text-lg">
                   A reusable authentication starter with multi-tenancy, invites,
