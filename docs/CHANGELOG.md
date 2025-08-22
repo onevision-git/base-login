@@ -5,6 +5,19 @@ Format: Keep a running, human-readable list per release. Use semantic tags like 
 
 ---
 
+## [v1.0.3] - 2025-08-22
+
+### Changed
+- Synced `feature/frontend-login-ui` branch into `main` and tagged as v1.0.3.
+- Updated health-check endpoint (`/api/health`) to return a consistent JSON response with version field for CI/build safety.
+- Standardised error handling: replaced `catch (err: any)` with `catch (err: unknown)` and added `instanceof Error` guards.
+
+### Notes
+- This release aligns `main` with latest feature work.
+- No schema changes; migration not required.
+
+---
+
 ## [v1.02] - 2025-08-21
 
 ### Added
