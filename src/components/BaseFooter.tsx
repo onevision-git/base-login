@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { APP_VERSION } from '@/lib/version';
 
 type NavLink = {
   href: string;
@@ -9,16 +10,10 @@ type NavLink = {
 };
 
 type BaseFooterProps = {
-  /** Optional copyright owner text (e.g., "One Vision Ltd").
-   *  Defaults to NEXT_PUBLIC_ORG_NAME (or "Your Company"). */
   owner?: string;
-  /** Optional suffix text after the owner (e.g., "All rights reserved.") */
   note?: string;
-  /** Optional small set of links to show under/next to the copyright line */
   links?: NavLink[];
-  /** Additional class names to append to the <footer> */
   className?: string;
-  /** Background + border styling (defaults to public look) */
   variant?: 'public' | 'dashboard';
 };
 
@@ -30,15 +25,20 @@ export default function BaseFooter({
   variant = 'public',
 }: BaseFooterProps) {
   const year = new Date().getFullYear();
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'Your App';
 
-  const baseClasses = 'w-full text-center py-4';
+  const baseClasses = 'w-full text-center py-6 text-sm';
   const variantClasses =
     variant === 'dashboard' ? 'bg-base-300 mt-auto' : 'bg-base-200';
 
   return (
     <footer className={`${baseClasses} ${variantClasses} ${className}`.trim()}>
-      <p className="text-sm text-base-content/80">
+      <p className="text-base-content/80">
         &copy; {year} {owner}. {note}
+      </p>
+
+      <p className="mt-1 text-xs text-base-content/60">
+        {appName} v{APP_VERSION}
       </p>
 
       {links.length > 0 ? (
